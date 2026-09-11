@@ -1,0 +1,8 @@
+*
+!about/
+!about/aboutus.webp
+!brand/
+!brand/hereo.webp
+!services/
+!services/*.webp
+!.gitignore

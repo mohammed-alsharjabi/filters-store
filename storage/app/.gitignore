@@ -1,0 +1,9 @@
+*
+!assets/
+!assets/services/
+!assets/services/*.webp
+!assets/icons/
+!assets/icons/aboutus.webp
+!private/
+!public/
+!.gitignore
