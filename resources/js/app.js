@@ -95,6 +95,17 @@ document.querySelectorAll('[data-related-carousel]').forEach((carousel) => {
     carousel.querySelector('[data-related-next]')?.addEventListener('click', () => move(-1));
 });
 
+document.querySelectorAll('[data-quantity-stepper]').forEach((stepper) => {
+    const input = stepper.querySelector('input[type="number"]');
+    if (!input) return;
+    stepper.querySelectorAll('[data-quantity-change]').forEach((button) => {
+        button.addEventListener('click', () => {
+            Number(button.dataset.quantityChange) > 0 ? input.stepUp() : input.stepDown();
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    });
+});
+
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
         setNavigation(false);
