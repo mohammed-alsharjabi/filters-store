@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Area;
 use App\Models\ArticleCategory;
+use App\Models\ProductCategory;
 use App\Models\SeoMetadata;
 use App\Models\Service;
 use App\Models\ServiceCategory;
@@ -49,6 +50,8 @@ class SeoSuggestionService
             'internal_links' => $this->internalLinks($type, $data, $model),
             'schema_type' => match ($type) {
                 'services' => 'Service',
+                'products' => 'Product',
+                'product-categories' => 'CollectionPage',
                 'articles' => 'Article',
                 'projects' => 'CreativeWork + ImageObject',
                 'areas' => 'WebPage',
@@ -117,6 +120,7 @@ class SeoSuggestionService
             'services' => filled($data['service_category_id'] ?? null) ? ServiceCategory::query()->whereKey($data['service_category_id'])->value('name') : null,
             'projects' => filled($data['service_id'] ?? null) ? Service::query()->whereKey($data['service_id'])->value('name') : null,
             'articles' => filled($data['article_category_id'] ?? null) ? ArticleCategory::query()->whereKey($data['article_category_id'])->value('name') : null,
+            'products' => filled($data['product_category_id'] ?? null) ? ProductCategory::query()->whereKey($data['product_category_id'])->value('name') : null,
             default => null,
         };
     }
@@ -129,6 +133,8 @@ class SeoSuggestionService
             'articles' => 'الدليل',
             'areas' => 'المناطق',
             'service-categories' => 'الخدمات/تصنيف',
+            'products' => 'المنتجات',
+            'product-categories' => 'منتجات-الفلاتر/تصنيف',
             default => '',
         };
 
@@ -143,6 +149,11 @@ class SeoSuggestionService
             $links->push('احجز الآن | '.route('quote'));
             $links->push('دليل الأسعار | '.route('prices'));
             $links->push('مناطق الخدمة | '.route('areas.index'));
+        } elseif ($type === 'products') {
+            $links->push('كل المنتجات | '.route('products.index'));
+            $links->push('سلة المشتريات | '.route('cart.show'));
+        } elseif ($type === 'product-categories') {
+            $links->push('كل المنتجات | '.route('products.index'));
         } elseif ($type === 'projects') {
             if ($service = Service::query()->find($data['service_id'] ?? null)) {
                 $links->push($service->name.' | '.route('services.show', $service->slug));

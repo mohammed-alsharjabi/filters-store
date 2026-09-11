@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ServiceCategory;
 use App\Policies\ContentPolicy;
 use App\Support\CuratedServiceAssetImporter;
 use App\Support\SettingsRepository;
+use App\Support\StoreCart;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -25,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(SettingsRepository::class);
+        $this->app->singleton(StoreCart::class);
     }
 
     /**
@@ -34,10 +37,13 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('leads', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
         RateLimiter::for('admin-login', fn (Request $request) => Limit::perMinute(5)->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()));
+        RateLimiter::for('store-actions', fn (Request $request) => Limit::perMinute(30)->by($request->ip()));
+        RateLimiter::for('checkout', fn (Request $request) => Limit::perMinute(6)->by($request->ip()));
         Gate::define('manage-content', [ContentPolicy::class, 'manage']);
         Gate::define('view-leads', [ContentPolicy::class, 'viewLeads']);
         View::composer('*', function ($view): void {
             $view->with('siteSettings', app(SettingsRepository::class)->public());
+            $view->with('cartCount', app(StoreCart::class)->count());
         });
         View::composer(['partials.header', 'partials.footer'], function ($view): void {
             $categories = Schema::hasTable('service_categories')
@@ -56,6 +62,13 @@ class AppServiceProvider extends ServiceProvider
                     ])->all())
                 : collect();
             $view->with('navServiceCategories', $categories);
+            $productCategories = Schema::hasTable('product_categories')
+                ? Cache::remember('navigation.product-categories', now()->addMinutes(20), fn () => ProductCategory::query()
+                    ->where('is_active', true)
+                    ->whereHas('products', fn ($query) => $query->published())
+                    ->orderBy('sort_order')->get(['name', 'slug'])->toArray())
+                : [];
+            $view->with('navProductCategories', $productCategories);
             $view->with('hasPublishedProjects', Schema::hasTable('projects')
                 ? Cache::remember('navigation.has-published-projects', now()->addMinutes(20), fn () => Project::published()->exists())
                 : false);

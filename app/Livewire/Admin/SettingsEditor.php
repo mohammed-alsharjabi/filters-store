@@ -41,6 +41,11 @@ class SettingsEditor extends Component
             'values.search_console_verification' => ['nullable', 'regex:/^[A-Za-z0-9_-]{10,200}$/'],
             'values.ga_measurement_id' => ['nullable', 'regex:/^G-[A-Z0-9]{5,20}$/'],
             'values.logo_url' => ['nullable', 'url', 'max:2048'],
+            'values.bank_name' => ['nullable', 'string', 'max:120'],
+            'values.bank_account_name' => ['nullable', 'string', 'max:160'],
+            'values.bank_account_number' => ['nullable', 'string', 'max:40', 'regex:/^[0-9\s-]*$/'],
+            'values.bank_iban' => ['nullable', 'string', 'max:40', 'regex:/^(?:SA)?[0-9A-Za-z\s]*$/'],
+            'values.bank_transfer_instructions' => ['nullable', 'string', 'max:1000'],
             ...$themeRules,
         ], [
             'values.*.required' => 'هذا الحقل مطلوب.',

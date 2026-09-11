@@ -39,7 +39,7 @@
             </section>
         @else
             <section class="admin-panel">
-                <div class="admin-panel-head"><div><h2>{{ $group === 'business' ? 'بيانات النشاط' : ($group === 'seo' ? 'Search Console وGoogle Analytics' : $group) }}</h2>@if($group === 'seo')<small>ألصق المعرّفات فقط؛ لا تضف أكواد JavaScript.</small>@endif</div></div>
+                <div class="admin-panel-head"><div><h2>{{ $group === 'business' ? 'بيانات النشاط' : ($group === 'seo' ? 'Search Console وGoogle Analytics' : ($group === 'checkout' ? 'بيانات التحويل البنكي' : $group)) }}</h2>@if($group === 'seo')<small>ألصق المعرّفات فقط؛ لا تضف أكواد JavaScript.</small>@elseif($group === 'checkout')<small>لا تظهر الحقول الفارغة للعميل، وتُعرض البيانات بعد تسجيل الطلب فقط.</small>@endif</div></div>
                 <div class="admin-form-grid">
                     @foreach($settings as $setting)
                         <label><span>{{ $setting->label }} <small>{{ $setting->key }}</small></span><input type="text" wire:model="values.{{ $setting->key }}" @if(str_contains($setting->key, 'phone') || $group === 'seo') dir="ltr" @endif>@error('values.'.$setting->key)<small>{{ $message }}</small>@enderror</label>

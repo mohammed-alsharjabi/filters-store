@@ -7,6 +7,9 @@ use App\Models\Article;
 use App\Models\ArticleCategory;
 use App\Models\Faq;
 use App\Models\Material;
+use App\Models\Product;
+use App\Models\ProductCategory;
+use App\Models\ProductTag;
 use App\Models\Project;
 use App\Models\Redirect;
 use App\Models\SeoMetadata;
@@ -20,6 +23,24 @@ final class AdminContent
     public static function all(): array
     {
         return [
+            'product-categories' => ['label' => 'تصنيفات المنتجات', 'model' => ProductCategory::class, 'title' => 'name', 'columns' => ['name' => 'التصنيف', 'is_active' => 'نشط', 'sort_order' => 'الترتيب'], 'basic_fields' => ['name', 'description', 'is_active'], 'image_meta_fields' => ['featured_image_alt', 'featured_image_caption'], 'fields' => [
+                'name' => self::text('اسم التصنيف', true), 'slug' => self::text('الرابط القصير'), 'description' => self::textarea('وصف التصنيف'),
+                'featured_image_alt' => self::text('النص البديل للصورة'), 'featured_image_caption' => self::textarea('تعليق الصورة'),
+                'sort_order' => self::number('الترتيب'), 'is_active' => array_replace(self::boolean('نشط'), ['default' => true]),
+            ], 'image' => true],
+            'product-tags' => ['label' => 'وسوم المنتجات', 'model' => ProductTag::class, 'title' => 'name', 'columns' => ['name' => 'الوسم', 'slug' => 'الرابط الداخلي', 'is_active' => 'نشط'], 'fields' => [
+                'name' => self::text('اسم الوسم', true), 'slug' => self::text('الرابط القصير'), 'is_active' => array_replace(self::boolean('نشط'), ['default' => true]),
+            ], 'seo' => false],
+            'products' => ['label' => 'المنتجات', 'model' => Product::class, 'title' => 'name', 'columns' => ['name' => 'المنتج', 'price' => 'السعر', 'stock_quantity' => 'المخزون', 'status' => 'الحالة'], 'basic_fields' => ['product_category_id', 'name', 'excerpt', 'price', 'stock_quantity', 'status'], 'image_meta_fields' => ['featured_image_alt', 'featured_image_caption'], 'fields' => [
+                'product_category_id' => self::select('التصنيف', ProductCategory::class, true), 'name' => self::text('اسم المنتج', true), 'slug' => self::text('الرابط القصير'),
+                'sku' => self::text('رمز SKU'), 'gtin' => self::text('GTIN إن وجد'), 'mpn' => self::text('MPN إن وجد'), 'brand' => self::text('العلامة التجارية'),
+                'excerpt' => self::textarea('الوصف المختصر'), 'description' => self::textarea('وصف المنتج'),
+                'price' => self::decimal('السعر بالريال'), 'compare_at_price' => self::decimal('السعر قبل الخصم إن وجد'), 'currency' => self::options('العملة', ['SAR' => 'ريال سعودي']),
+                'stock_quantity' => self::number('كمية المخزون'), 'track_stock' => array_replace(self::boolean('تتبع المخزون'), ['default' => true]), 'allow_backorder' => self::boolean('السماح بالطلب عند نفاد المخزون'),
+                'featured_image_alt' => self::text('النص البديل للصورة'), 'featured_image_caption' => self::textarea('تعليق الصورة'),
+                'condition' => self::options('حالة المنتج', ['new' => 'جديد']), 'is_featured' => self::boolean('منتج مميز'), 'sort_order' => self::number('الترتيب'),
+                'status' => self::options('حالة النشر', ['draft' => 'مسودة', 'published' => 'منشور']), 'published_at' => self::datetime('تاريخ النشر'),
+            ], 'image' => true, 'relations' => ['tag_ids' => ['label' => 'وسوم المنتج', 'relation' => 'tags', 'model' => ProductTag::class]]],
             'service-categories' => ['label' => 'تصنيفات الخدمات', 'model' => ServiceCategory::class, 'title' => 'name', 'columns' => ['name' => 'الاسم', 'is_active' => 'نشط'], 'basic_fields' => ['name', 'excerpt', 'is_active'], 'image_meta_fields' => ['featured_image_alt', 'featured_image_caption'], 'fields' => [
                 'name' => self::text('الاسم', true), 'slug' => self::text('الرابط العربي'), 'excerpt' => self::textarea('الملخص'), 'description' => self::textarea('الوصف'),
                 'featured_image_alt' => self::text('النص البديل للصورة'), 'featured_image_caption' => self::textarea('تعليق الصورة'),
@@ -92,6 +113,7 @@ final class AdminContent
                 'route_name' => ['label' => 'الصفحة', 'type' => 'select-options', 'rules' => ['required', 'string', 'max:100'], 'options' => [
                     'home' => 'الرئيسية', 'about' => 'من نحن', 'services.index' => 'الخدمات', 'projects.index' => 'المشاريع',
                     'areas.index' => 'المناطق', 'guide.index' => 'المقالات', 'prices' => 'الباقات والأسعار', 'quote' => 'احجز الآن',
+                    'products.index' => 'المنتجات', 'cart.show' => 'سلة المشتريات',
                     'contact' => 'تواصل معنا', 'privacy' => 'سياسة الخصوصية', 'terms' => 'الشروط والأحكام',
                 ]],
                 'meta_title' => self::text('عنوان محرك البحث', true), 'meta_description' => self::textarea('الوصف التعريفي', true),

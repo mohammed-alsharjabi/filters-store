@@ -11,7 +11,11 @@ trait HasArabicSlug
     {
         static::saving(function ($model): void {
             $source = $model->getAttribute($model->slugSourceColumn());
-            $model->slug = ArabicSlugger::unique($model, (string) ($model->slug ?: $source), $model->getKey());
+            $candidate = (string) ($model->slug ?: $source);
+            if (! $model->slug && method_exists($model, 'slugCandidate')) {
+                $candidate = $model->slugCandidate((string) $source);
+            }
+            $model->slug = ArabicSlugger::unique($model, $candidate, $model->getKey());
         });
         static::updated(function ($model): void {
             $oldSlug = $model->getOriginal('slug');

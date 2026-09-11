@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use App\Models\Article;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\ServiceCategory;
@@ -18,6 +20,7 @@ class SeoController extends Controller
         $sitemaps = collect([
             ['loc' => route('sitemaps.pages'), 'lastmod' => $this->latestDate(ServiceCategory::class)],
             ['loc' => route('sitemaps.services'), 'lastmod' => $this->latestPublishedDate(Service::class)],
+            ['loc' => route('sitemaps.products'), 'lastmod' => $this->latestPublishedDate(Product::class)],
             ['loc' => route('sitemaps.projects'), 'lastmod' => $this->latestPublishedDate(Project::class)],
             ['loc' => route('sitemaps.areas'), 'lastmod' => $this->latestPublishedDate(Area::class)],
             ['loc' => route('sitemaps.articles'), 'lastmod' => $this->latestPublishedDate(Article::class)],
@@ -31,7 +34,7 @@ class SeoController extends Controller
     {
         $urls = collect([
             ['loc' => route('home'), 'lastmod' => now()->toDateString(), 'priority' => '1.0'],
-            ...collect(['about', 'services.index', 'areas.index', 'guide.index', 'prices', 'quote', 'contact', 'privacy', 'terms'])
+            ...collect(['about', 'services.index', 'products.index', 'areas.index', 'guide.index', 'prices', 'quote', 'contact', 'privacy', 'terms'])
                 ->map(fn ($name) => ['loc' => route($name), 'lastmod' => now()->toDateString(), 'priority' => '0.7'])->all(),
             ...(Project::published()->exists()
                 ? [['loc' => route('projects.index'), 'lastmod' => now()->toDateString(), 'priority' => '0.7']]
@@ -56,6 +59,18 @@ class SeoController extends Controller
         return $this->urlset(Project::published()->get()->map(fn ($item) => [
             'loc' => route('projects.show', $item->slug), 'lastmod' => $item->updated_at->toDateString(), 'priority' => '0.8',
         ]));
+    }
+
+    public function products(): Response
+    {
+        $urls = Product::published()->get()->map(fn ($item) => [
+            'loc' => route('products.show', $item->slug), 'lastmod' => $item->updated_at->toDateString(), 'priority' => '0.9',
+        ]);
+        ProductCategory::query()->where('is_active', true)->whereHas('products', fn ($query) => $query->published())->get()->each(
+            fn ($item) => $urls->push(['loc' => route('products.category', $item->slug), 'lastmod' => $item->updated_at->toDateString(), 'priority' => '0.8'])
+        );
+
+        return $this->urlset($urls);
     }
 
     public function areas(): Response
@@ -104,6 +119,12 @@ class SeoController extends Controller
             'title' => $area->featured_image_alt ?: $area->name,
             'caption' => $area->featured_image_caption,
         ]));
+        Product::published()->whereNotNull('featured_image')->get()->each(fn (Product $product) => $items->push([
+            'page' => route('products.show', $product->slug),
+            'image' => $product->imageUrl(),
+            'title' => $product->featured_image_alt ?: $product->name,
+            'caption' => $product->featured_image_caption,
+        ]));
         Project::published()->with('images')->get()->each(function (Project $project) use ($items): void {
             foreach ($project->images as $image) {
                 $items->push([
@@ -126,6 +147,9 @@ class SeoController extends Controller
             'Allow: /',
             'Disallow: '.$basePath.'/admin',
             'Disallow: '.$basePath.'/طلبات',
+            'Disallow: '.$basePath.'/السلة',
+            'Disallow: '.$basePath.'/إتمام-الطلب',
+            'Disallow: '.$basePath.'/تم-استلام-الطلب',
             'Disallow: '.$basePath.'/*?*filter=',
             'Disallow: '.$basePath.'/*?*search=',
             'Disallow: '.$basePath.'/*?*sort=',

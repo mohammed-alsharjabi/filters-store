@@ -29,6 +29,10 @@
                 <input type="file" wire:model="image" accept="image/jpeg,image/png,image/webp">
                 <p class="field-help">JPG أو PNG أو WebP، بحد أقصى 5MB وأبعاد لا تقل عن 400×300.</p>
                 @error('image')<small class="field-error">{{ $message }}</small>@enderror
+                @if($type === 'products' && $existingProductImages)
+                    <label class="full-field"><span>أو استخدم نسخة من صورة موجودة في المشروع</span><select wire:model="existingImage"><option value="">— اختر صورة —</option>@foreach($existingProductImages as $path => $label)<option value="{{ $path }}">{{ $label }}</option>@endforeach</select></label>
+                    @error('existingImage')<small class="field-error">{{ $message }}</small>@enderror
+                @endif
                 @if($imageMetaNames)
                     <div class="admin-form-grid image-meta-grid">
                         @foreach(collect($definition['fields'])->only($imageMetaNames) as $name => $field)
@@ -106,5 +110,19 @@
 
 @if($type === 'services' && $model)
     <livewire:admin.service-image-manager :service="$model" :key="'service-images-'.$model->id" />
+@endif
+@if($type === 'products' && $model)
+    <section class="admin-panel product-inventory-history">
+        <div class="admin-panel-head"><div><p class="admin-step">المخزون</p><h2>سجل حركة المخزون</h2><small>آخر 20 حركة ناتجة عن الطلبات أو الإلغاء أو التعديل اليدوي.</small></div></div>
+        @if($inventoryMovements->isEmpty())
+            <div class="empty-state">لا توجد حركات مخزون مسجلة.</div>
+        @else
+            <div class="inventory-history-table" role="table" aria-label="سجل حركة المخزون">
+                @foreach($inventoryMovements as $movement)
+                    <div role="row"><time>{{ $movement->created_at->format('Y-m-d H:i') }}</time><strong dir="ltr">{{ $movement->quantity_change > 0 ? '+' : '' }}{{ $movement->quantity_change }}</strong><span>الرصيد: {{ $movement->balance_after }}</span><span>{{ $movement->reason }}</span>@if($movement->order)<a href="{{ route('admin.orders') }}">{{ $movement->order->order_number }}</a>@endif</div>
+                @endforeach
+            </div>
+        @endif
+    </section>
 @endif
 </div>

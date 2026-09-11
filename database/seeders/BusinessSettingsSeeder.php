@@ -40,6 +40,22 @@ class BusinessSettingsSeeder extends Seeder
         }
 
         foreach ([
+            ['bank_name', '', 'اسم البنك'],
+            ['bank_account_name', '', 'اسم صاحب الحساب'],
+            ['bank_account_number', '', 'رقم الحساب'],
+            ['bank_iban', '', 'رقم الآيبان'],
+            ['bank_transfer_instructions', 'بعد تسجيل الطلب حوّل المبلغ إلى الحساب المعتمد، ثم أرسل إشعار التحويل مع رقم الطلب عبر واتساب.', 'تعليمات التحويل البنكي'],
+        ] as [$key, $value, $label]) {
+            Setting::query()->firstOrCreate(['key' => $key], [
+                'value' => $value,
+                'label' => $label,
+                'group' => 'checkout',
+                'type' => 'string',
+                'is_public' => true,
+            ]);
+        }
+
+        foreach ([
             ['search_console_verification', '', 'رمز إثبات ملكية Google Search Console'],
             ['ga_measurement_id', '', 'معرّف Google Analytics 4'],
             ['logo_url', '', 'رابط شعار النشاط للبيانات المنظمة'],

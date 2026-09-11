@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Models\Area;
 use App\Models\Article;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Models\SeoMetadata;
@@ -38,7 +40,11 @@ final class Seo
             'og_title' => $metadata?->og_title ?: $title,
             'og_description' => $metadata?->og_description ?: $description,
             'og_image' => $metadata?->og_image ?: self::modelOgImage($model),
-            'og_type' => $model instanceof Article ? 'article' : 'website',
+            'og_type' => match (true) {
+                $model instanceof Article => 'article',
+                $model instanceof Product => 'product',
+                default => 'website',
+            },
             'prev' => null,
             'next' => null,
             'schemas' => array_values(array_filter([
@@ -145,6 +151,44 @@ final class Seo
                     $schemas[] = self::serviceImageSchema($image, $model);
                 }
             }
+        } elseif ($model instanceof Product) {
+            $schemas[] = array_filter([
+                '@context' => 'https://schema.org',
+                '@type' => 'Product',
+                '@id' => route('products.show', $model->slug).'#product',
+                'name' => $model->name,
+                'description' => $model->excerpt ?: strip_tags((string) $model->description),
+                'url' => route('products.show', $model->slug),
+                'image' => $model->imageUrl(),
+                'sku' => $model->sku,
+                'gtin' => $model->gtin,
+                'mpn' => $model->mpn,
+                'brand' => ['@type' => 'Brand', 'name' => $model->brand],
+                'offers' => [
+                    '@type' => 'Offer',
+                    'url' => route('products.show', $model->slug),
+                    'priceCurrency' => $model->currency,
+                    'price' => $model->price,
+                    'availability' => $model->schemaAvailability(),
+                    'itemCondition' => 'https://schema.org/NewCondition',
+                    'seller' => ['@id' => url('/').'#localbusiness'],
+                ],
+            ], fn ($value) => $value !== null && $value !== '');
+            if ($model->featured_image) {
+                $schemas[] = self::featuredImageSchema($model, $model->name);
+            }
+        } elseif ($model instanceof ProductCategory) {
+            $schemas[] = [
+                '@context' => 'https://schema.org',
+                '@type' => 'CollectionPage',
+                'name' => $model->name,
+                'description' => $model->description ?: 'منتجات '.$model->name,
+                'url' => route('products.category', $model->slug),
+                'isPartOf' => ['@id' => url('/').'#organization'],
+            ];
+            if ($model->featured_image) {
+                $schemas[] = self::featuredImageSchema($model, $model->name);
+            }
         } elseif ($model instanceof Article) {
             $articleImage = self::articleServiceImage($model);
             $schemas[] = array_filter(['@context' => 'https://schema.org', '@type' => 'Article', 'headline' => $model->title, 'description' => $model->excerpt, 'datePublished' => $model->published_at?->toAtomString(), 'dateModified' => $model->updated_at?->toAtomString(), 'mainEntityOfPage' => route('guide.show', $model->slug), 'author' => ['@id' => url('/').'#organization'], 'publisher' => ['@id' => url('/').'#organization'], 'image' => $model->featured_image ? asset('storage/'.$model->featured_image) : ($articleImage ? asset('storage/'.$articleImage->optimized_path) : null)]);
@@ -243,6 +287,9 @@ final class Seo
         }
         if ($model instanceof Article) {
             return $model->featured_image ?: self::articleServiceImage($model)?->optimized_path;
+        }
+        if ($model instanceof Product || $model instanceof ProductCategory) {
+            return $model->featured_image;
         }
 
         return $model->featured_image ?? null;

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\ProductCategory;
 use App\Models\ServiceCategory;
 use App\Support\AdminContent;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -29,12 +30,20 @@ class ContentIndex extends Component
         $this->authorize('manage-content');
         $definition = AdminContent::get($this->type);
         $record = $definition['model']::query()->findOrFail($id);
+        if ($this->type === 'product-categories' && $record->products()->exists()) {
+            session()->flash('error', 'لا يمكن حذف تصنيف مرتبط بمنتجات. انقل المنتجات إلى تصنيف آخر أولًا.');
+
+            return;
+        }
         $record->delete();
         if (in_array($this->type, ['services', 'service-categories'], true)) {
             Cache::forget('navigation.service-categories');
         }
         if ($this->type === 'projects') {
             Cache::forget('navigation.has-published-projects');
+        }
+        if (in_array($this->type, ['products', 'product-categories'], true)) {
+            Cache::forget('navigation.product-categories');
         }
         session()->flash('success', 'حُذف السجل.');
     }
@@ -44,13 +53,19 @@ class ContentIndex extends Component
         $definition = AdminContent::get($this->type);
         $title = $definition['title'];
         $query = $definition['model']::query()->when($this->search, fn ($q) => $q->where($title, 'like', '%'.$this->search.'%'));
-        if ($this->type === 'services') {
+        if ($this->type === 'products') {
+            $records = $query
+                ->orderBy(ProductCategory::query()->select('sort_order')->whereColumn('product_categories.id', 'products.product_category_id'))
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->paginate(20);
+        } elseif ($this->type === 'services') {
             $records = $query
                 ->orderBy(ServiceCategory::query()->select('sort_order')->whereColumn('service_categories.id', 'services.service_category_id'))
                 ->orderBy('sort_order')
                 ->orderBy('id')
                 ->paginate(20);
-        } elseif ($this->type === 'service-categories') {
+        } elseif (in_array($this->type, ['service-categories', 'product-categories'], true)) {
             $records = $query->orderBy('sort_order')->orderBy('id')->paginate(20);
         } else {
             $records = $query->latest()->paginate(20);

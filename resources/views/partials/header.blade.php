@@ -46,10 +46,12 @@
                     <a class="dropdown-all" href="{{ route('services.index') }}">عرض جميع الخدمات ←</a>
                 </div>
             </div>
+            <a @class(['active' => request()->routeIs('products.*')]) href="{{ route('products.index') }}">المنتجات</a>
             @if($maintenanceCategory)<a href="{{ route('services.category', $maintenanceCategory['slug']) }}">الصيانة</a>@endif
             <a @class(['active' => request()->routeIs('guide.*')]) href="{{ route('guide.index') }}">المقالات</a>
             <a @class(['active' => request()->routeIs('about')]) href="{{ route('about') }}">من نحن</a>
             <a @class(['active' => request()->routeIs('contact')]) href="{{ route('contact') }}">تواصل معنا</a>
+            <a class="header-cart-link" href="{{ route('cart.show') }}" aria-label="سلة المشتريات، {{ $cartCount }} منتج">السلة @if($cartCount)<b>{{ $cartCount }}</b>@endif</a>
         </nav>
 
         <a class="button button-primary header-cta" href="{{ route('quote') }}">احجز الآن</a>
@@ -67,6 +69,8 @@
     <nav>
         <a href="{{ route('home') }}">الرئيسية</a>
         <details><summary>خدماتنا</summary><div>@foreach($navigationCategories as $category)<strong>{{ $category['name'] }}</strong>@foreach($category['services'] as $item)<a href="{{ route('services.show', $item['slug']) }}">{{ $item['name'] }}</a>@endforeach @endforeach</div></details>
+        <a href="{{ route('products.index') }}">المنتجات</a>
+        <a href="{{ route('cart.show') }}">سلة المشتريات @if($cartCount)<b class="drawer-cart-count">{{ $cartCount }}</b>@endif</a>
         @if($maintenanceCategory)<a href="{{ route('services.category', $maintenanceCategory['slug']) }}">الصيانة</a>@endif
         <a href="{{ route('guide.index') }}">المقالات</a>
         <a href="{{ route('about') }}">من نحن</a>

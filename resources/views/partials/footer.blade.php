@@ -24,6 +24,8 @@
         <nav class="footer-column" aria-label="روابط مهمة">
             <h2>روابط مهمة</h2>
             <a href="{{ route('services.index') }}">الخدمات</a>
+            <a href="{{ route('products.index') }}">المنتجات</a>
+            <a href="{{ route('cart.show') }}">سلة المشتريات</a>
             <a href="{{ route('guide.index') }}">المقالات</a>
             <a href="{{ route('about') }}">من نحن</a>
             <a href="{{ route('contact') }}">تواصل معنا</a>

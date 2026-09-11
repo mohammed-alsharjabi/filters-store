@@ -3,6 +3,8 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Article;
+use App\Models\InventoryMovement;
+use App\Models\Product;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Support\AdminContent;
@@ -11,6 +13,9 @@ use App\Support\SeoSuggestionService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -29,6 +34,8 @@ class ContentEditor extends Component
     public array $seo = [];
 
     public $image;
+
+    public ?string $existingImage = null;
 
     public array $gallery = [];
 
@@ -93,7 +100,7 @@ class ContentEditor extends Component
 
     public function updatedData(mixed $value, string $key): void
     {
-        if (in_array($key, ['name', 'title', 'excerpt', 'description', 'service_category_id', 'article_category_id', 'service_id', 'area_id'], true)) {
+        if (in_array($key, ['name', 'title', 'excerpt', 'description', 'service_category_id', 'article_category_id', 'product_category_id', 'service_id', 'area_id'], true)) {
             $this->applySeoSuggestions(false);
         }
     }
@@ -119,6 +126,14 @@ class ContentEditor extends Component
         if ($definition['image'] ?? false) {
             $rules['image'] = ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:min_width=400,min_height=300,max_width=8000,max_height=8000'];
         }
+        if ($this->type === 'products') {
+            $rules['existingImage'] = ['nullable', Rule::in(array_keys($this->existingProductImages()))];
+            $rules['data.sku'] = ['nullable', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($this->record)];
+            $rules['data.gtin'] = ['nullable', 'string', 'max:32', Rule::unique('products', 'gtin')->ignore($this->record)];
+        }
+        if ($this->type === 'product-tags') {
+            $rules['data.name'] = ['required', 'string', 'max:255', Rule::unique('product_tags', 'name')->ignore($this->record)];
+        }
         if ($definition['gallery'] ?? false) {
             $rules['gallery'] = ['array', 'max:20'];
             $rules['gallery.*'] = ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:min_width=400,min_height=300,max_width=8000,max_height=8000'];
@@ -136,7 +151,7 @@ class ContentEditor extends Component
         $rules['seo.schema_type'] = ['nullable', 'string', 'max:100'];
         $this->validate($rules);
 
-        if (in_array($this->type, ['services', 'areas', 'articles', 'projects'], true)) {
+        if (in_array($this->type, ['services', 'areas', 'articles', 'projects', 'products'], true)) {
             if (($this->data['status'] ?? 'draft') === 'draft') {
                 $this->data['published_at'] = null;
                 $this->seo['robots'] = 'noindex,follow';
@@ -160,15 +175,45 @@ class ContentEditor extends Component
 
             return null;
         }
+        $existingModel = $this->record ? $definition['model']::query()->findOrFail($this->record) : null;
+        $previousStockQuantity = $existingModel instanceof Product ? $existingModel->stock_quantity : 0;
+        if ($this->type === 'products' && ($this->data['status'] ?? 'draft') === 'published') {
+            $missing = collect([
+                'data.price' => blank($this->data['price'] ?? null) ? 'أدخل سعر المنتج قبل النشر.' : null,
+                'data.brand' => blank($this->data['brand'] ?? null) ? 'أدخل العلامة التجارية قبل النشر.' : null,
+                'image' => ! $this->image && ! $this->existingImage && blank($existingModel?->featured_image) ? 'أضف صورة WebP أو اختر صورة موجودة قبل النشر.' : null,
+            ])->filter();
+            if ($missing->isNotEmpty()) {
+                throw ValidationException::withMessages($missing->all());
+            }
+        }
+        if ($this->type === 'products' && filled($this->data['compare_at_price'] ?? null) && (float) $this->data['compare_at_price'] <= (float) ($this->data['price'] ?? 0)) {
+            throw ValidationException::withMessages(['data.compare_at_price' => 'يجب أن يكون السعر قبل الخصم أكبر من السعر الحالي.']);
+        }
         $model = $this->record ? $definition['model']::query()->findOrFail($this->record) : new $definition['model'];
         $model->fill($this->data);
         $previousFeaturedImage = null;
         if (($definition['image'] ?? false) && $this->image) {
             $previousFeaturedImage = $model->featured_image;
-            $model->featured_image = app(ResponsiveImageService::class)->storePrimaryImage($this->image);
+            $model->featured_image = app(ResponsiveImageService::class)->storePrimaryImage($this->image, $this->type === 'products' ? 'products' : 'content');
+        } elseif ($this->type === 'products' && $this->existingImage) {
+            $previousFeaturedImage = $model->featured_image;
+            $newPath = 'products/'.Str::uuid().'.webp';
+            abort_unless(Storage::disk('public')->exists($this->existingImage), 422, 'الصورة المختارة غير موجودة.');
+            Storage::disk('public')->copy($this->existingImage, $newPath);
+            $model->featured_image = $newPath;
         }
         $model->save();
-        if ($previousFeaturedImage) {
+        if ($model instanceof Product && $model->stock_quantity !== $previousStockQuantity) {
+            InventoryMovement::query()->create([
+                'product_id' => $model->id,
+                'type' => $existingModel ? 'manual_adjustment' : 'opening_stock',
+                'quantity_change' => $model->stock_quantity - $previousStockQuantity,
+                'balance_after' => $model->stock_quantity,
+                'reason' => $existingModel ? 'تعديل يدوي من لوحة التحكم' : 'رصيد افتتاحي',
+            ]);
+        }
+        if ($previousFeaturedImage && $previousFeaturedImage !== $model->featured_image && str_starts_with($previousFeaturedImage, $this->type === 'products' ? 'products/' : 'content/')) {
             Storage::disk('public')->delete($previousFeaturedImage);
         }
         if (in_array($this->type, ['services', 'service-categories'], true)) {
@@ -176,6 +221,9 @@ class ContentEditor extends Component
         }
         if ($this->type === 'projects') {
             Cache::forget('navigation.has-published-projects');
+        }
+        if (in_array($this->type, ['products', 'product-categories'], true)) {
+            Cache::forget('navigation.product-categories');
         }
         $this->record = $model->id;
         foreach ($definition['relations'] ?? [] as $key => $relation) {
@@ -250,14 +298,19 @@ class ContentEditor extends Component
             $options[$key] = $relation['model']::query()->when($this->record && $relation['model'] === $definition['model'], fn ($q) => $q->whereKeyNot($this->record))->orderBy($title)->get(['id', $title]);
         }
         $model = $this->record ? $definition['model']::query()->find($this->record) : null;
+        $inventoryMovements = $model instanceof Product
+            ? $model->inventoryMovements()->with('order')->latest()->limit(20)->get()
+            : collect();
         $seoWarnings = app(SeoSuggestionService::class)->warnings($this->seo, $model);
 
-        return view('livewire.admin.content-editor', compact('definition', 'options', 'model', 'seoWarnings'))->layout('components.layouts.admin', ['title' => ($this->record ? 'تعديل ' : 'إضافة ').$definition['label']]);
+        $existingProductImages = $this->type === 'products' ? $this->existingProductImages() : [];
+
+        return view('livewire.admin.content-editor', compact('definition', 'options', 'model', 'seoWarnings', 'existingProductImages', 'inventoryMovements'))->layout('components.layouts.admin', ['title' => ($this->record ? 'تعديل ' : 'إضافة ').$definition['label']]);
     }
 
     private function applySeoSuggestions(bool $force): void
     {
-        if (! in_array($this->type, ['services', 'projects', 'articles', 'areas', 'service-categories'], true)) {
+        if (! in_array($this->type, ['services', 'projects', 'articles', 'areas', 'service-categories', 'products', 'product-categories'], true)) {
             return;
         }
 
@@ -281,5 +334,14 @@ class ContentEditor extends Component
                 $this->seo[$field] = $suggestions[$field];
             }
         }
+    }
+
+    private function existingProductImages(): array
+    {
+        return collect(Storage::disk('public')->files('services'))
+            ->filter(fn (string $path): bool => str_ends_with(mb_strtolower($path), '.webp'))
+            ->mapWithKeys(fn (string $path): array => [$path => pathinfo($path, PATHINFO_FILENAME)])
+            ->sort()
+            ->all();
     }
 }

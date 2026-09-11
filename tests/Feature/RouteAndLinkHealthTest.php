@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Area;
 use App\Models\Article;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Service;
 use App\Models\User;
 use App\Support\AdminContent;
@@ -21,11 +23,24 @@ class RouteAndLinkHealthTest extends TestCase
         $service->update(['status' => 'published', 'is_active' => true, 'published_at' => now()]);
         $article = Article::query()->firstOrFail();
         $article->update(['status' => 'published', 'published_at' => now()]);
+        $productCategory = ProductCategory::query()->create(['name' => 'فلاتر اختبارية', 'is_active' => true]);
+        $product = Product::query()->create([
+            'product_category_id' => $productCategory->id,
+            'name' => 'فلتر اختباري',
+            'brand' => 'علامة موثقة',
+            'price' => 100,
+            'stock_quantity' => 1,
+            'featured_image' => 'products/test.webp',
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
 
         $urls = [
             route('home'), route('about'), route('services.index'), route('services.category', $service->category->slug), route('services.show', $service->slug),
             route('projects.index'), route('areas.index'), route('areas.show', Area::published()->firstOrFail()->slug),
             route('guide.index'), route('guide.show', $article->slug), route('prices'), route('quote'), route('contact'), route('privacy'), route('terms'),
+            route('products.index'), route('products.category', $productCategory->slug), route('products.show', $product->slug), route('products.whatsapp', $product->slug),
+            route('cart.show'), route('feeds.google-products'), route('feeds.meta-products'), route('sitemaps.products'),
             route('sitemap'), route('sitemaps.index'), route('sitemaps.pages'), route('sitemaps.services'), route('sitemaps.projects'),
             route('sitemaps.areas'), route('sitemaps.articles'), route('sitemaps.images'), route('robots'), route('admin.login'),
         ];
@@ -49,6 +64,7 @@ class RouteAndLinkHealthTest extends TestCase
 
         $this->actingAs($admin)->get(route('admin.settings'))->assertOk();
         $this->actingAs($admin)->get(route('admin.leads'))->assertOk();
+        $this->actingAs($admin)->get(route('admin.orders'))->assertOk();
     }
 
     public function test_rendered_public_pages_have_no_broken_internal_navigation_links(): void

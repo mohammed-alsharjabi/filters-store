@@ -4,6 +4,8 @@ namespace App\Livewire\Admin;
 
 use App\Models\Article;
 use App\Models\Lead;
+use App\Models\Order;
+use App\Models\Product;
 use App\Models\Project;
 use App\Models\Service;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -18,7 +20,7 @@ class Dashboard extends Component
         $this->authorize('manage-content');
 
         return view('livewire.admin.dashboard', [
-            'counts' => ['الطلبات الجديدة' => Lead::where('status', 'new')->count(), 'الخدمات المنشورة' => Service::published()->count(), 'المشاريع المنشورة' => Project::published()->count(), 'المقالات المنشورة' => Article::published()->count()],
+            'counts' => ['طلبات المنتجات الجديدة' => Order::where('status', 'pending_transfer')->count(), 'طلبات الخدمات الجديدة' => Lead::where('status', 'new')->count(), 'المنتجات المنشورة' => Product::published()->count(), 'الخدمات المنشورة' => Service::published()->count(), 'المشاريع المنشورة' => Project::published()->count(), 'المقالات المنشورة' => Article::published()->count()],
             'recentLeads' => Lead::with('service')->latest()->limit(8)->get(),
         ])->layout('components.layouts.admin', ['title' => 'لوحة التحكم']);
     }
