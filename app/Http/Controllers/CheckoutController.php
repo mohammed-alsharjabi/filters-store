@@ -77,17 +77,17 @@ class CheckoutController extends Controller
         $message = implode("\n", [
             '*طلب منتج من موقع فلاتر وتحلية المياه بالرياض*',
             'المنتج: '.$product->name,
-            'السعر: '.number_format((float) $product->price, 2).' ر.س',
+            'السعر: '.($product->price ? number_format((float) $product->price, 2).' ر.س' : 'عند الطلب'),
             'رابط المنتج: '.route('products.show', $product->slug),
         ]);
         $whatsappUrl = $checkout->whatsappUrl($message);
         $dataLayerEvent = ['event' => 'whatsapp_order', 'ecommerce' => [
-            'currency' => 'SAR', 'value' => (float) $product->price, 'items' => [[
+            'currency' => 'SAR', 'value' => (float) ($product->price ?? 0), 'items' => [[
                 'item_id' => $product->sku ?: (string) $product->id,
                 'item_name' => $product->name,
                 'item_brand' => $product->brand,
                 'item_category' => $product->category?->name,
-                'price' => (float) $product->price,
+                'price' => (float) ($product->price ?? 0),
                 'quantity' => 1,
             ]],
         ]];

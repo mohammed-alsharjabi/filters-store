@@ -51,6 +51,13 @@ class Service extends Model
         return $this->hasMany(ServiceImage::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function mediaAssets(): BelongsToMany
+    {
+        return $this->belongsToMany(MediaAsset::class)
+            ->withPivot(['context', 'sort_order'])
+            ->orderByPivot('sort_order');
+    }
+
     public function processedImages(): HasMany
     {
         return $this->images()->where('processing_status', 'processed');

@@ -24,7 +24,7 @@ class StoreCart
             return collect();
         }
 
-        $products = Product::published()->with('category')->whereIn('id', array_keys($cart))->get()->keyBy('id');
+        $products = Product::purchasable()->with('category')->whereIn('id', array_keys($cart))->get()->keyBy('id');
         $items = collect($cart)->map(function (int $quantity, int $id) use ($products): ?array {
             $product = $products->get($id);
             if (! $product) {
@@ -53,7 +53,7 @@ class StoreCart
 
     public function add(Product $product, int $quantity): void
     {
-        if (! $product->isAvailable()) {
+        if (! $product->isPurchasable()) {
             throw ValidationException::withMessages(['cart' => 'هذا المنتج غير متوفر حاليًا.']);
         }
 
@@ -69,7 +69,7 @@ class StoreCart
     public function update(array $quantities): void
     {
         $cart = $this->raw();
-        $products = Product::published()->whereIn('id', array_keys($cart))->get()->keyBy('id');
+        $products = Product::purchasable()->whereIn('id', array_keys($cart))->get()->keyBy('id');
 
         foreach ($cart as $id => $currentQuantity) {
             $quantity = (int) ($quantities[$id] ?? $currentQuantity);

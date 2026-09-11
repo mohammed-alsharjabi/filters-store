@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Area;
 use App\Models\Article;
+use App\Models\MediaAsset;
 use App\Models\Service;
 use App\Models\ServiceCategory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,10 +39,12 @@ class LaunchContentSeederTest extends TestCase
             $this->assertFileExists(storage_path('app/public/'.$path));
         }
 
-        foreach (config('site.article_featured_images') as $title => $path) {
-            $this->assertDatabaseHas('articles', ['title' => $title, 'featured_image' => $path]);
-            $this->assertFileExists(storage_path('app/public/'.$path));
-        }
+        Article::query()->with('mediaAssets')->each(function (Article $article): void {
+            $this->assertCount(5, $article->mediaAssets);
+            $this->assertSame($article->mediaAssets->first()->path, $article->featured_image);
+            $this->assertFileExists(storage_path('app/public/'.$article->featured_image));
+        });
+        $this->assertSame(19, MediaAsset::query()->count());
     }
 
     public function test_every_seeded_service_has_the_full_editable_content_template(): void
@@ -85,6 +88,7 @@ class LaunchContentSeederTest extends TestCase
 
         $this->assertSame(10, Service::query()->count());
         $this->assertSame(10, Article::query()->count());
+        $this->assertSame(19, MediaAsset::query()->count());
         $this->assertSame(5, Area::query()->count());
         $this->assertSame($canonicalContent, $service->fresh()->content);
         $this->assertSame('draft', $area->fresh()->status);

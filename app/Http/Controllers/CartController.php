@@ -23,7 +23,7 @@ class CartController extends Controller
 
     public function add(AddToCartRequest $request, string $slug, StoreCart $cart): RedirectResponse
     {
-        $product = Product::published()->where('slug', $slug)->firstOrFail();
+        $product = Product::purchasable()->where('slug', $slug)->firstOrFail();
         $cart->add($product, (int) $request->validated('quantity'));
         $event = ['event' => 'add_to_cart', 'ecommerce' => [
             'currency' => 'SAR',

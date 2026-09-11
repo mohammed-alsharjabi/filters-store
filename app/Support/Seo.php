@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Area;
 use App\Models\Article;
+use App\Models\MediaAsset;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Project;
@@ -151,8 +152,13 @@ final class Seo
                     $schemas[] = self::serviceImageSchema($image, $model);
                 }
             }
+            if ($model->relationLoaded('mediaAssets')) {
+                foreach ($model->mediaAssets as $image) {
+                    $schemas[] = self::mediaAssetSchema($image);
+                }
+            }
         } elseif ($model instanceof Product) {
-            $schemas[] = array_filter([
+            $productSchema = array_filter([
                 '@context' => 'https://schema.org',
                 '@type' => 'Product',
                 '@id' => route('products.show', $model->slug).'#product',
@@ -163,8 +169,10 @@ final class Seo
                 'sku' => $model->sku,
                 'gtin' => $model->gtin,
                 'mpn' => $model->mpn,
-                'brand' => ['@type' => 'Brand', 'name' => $model->brand],
-                'offers' => [
+                'brand' => $model->brand ? ['@type' => 'Brand', 'name' => $model->brand] : null,
+            ], fn ($value) => $value !== null && $value !== '');
+            if ($model->price !== null && (float) $model->price > 0) {
+                $productSchema['offers'] = [
                     '@type' => 'Offer',
                     'url' => route('products.show', $model->slug),
                     'priceCurrency' => $model->currency,
@@ -172,8 +180,9 @@ final class Seo
                     'availability' => $model->schemaAvailability(),
                     'itemCondition' => 'https://schema.org/NewCondition',
                     'seller' => ['@id' => url('/').'#localbusiness'],
-                ],
-            ], fn ($value) => $value !== null && $value !== '');
+                ];
+            }
+            $schemas[] = $productSchema;
             if ($model->featured_image) {
                 $schemas[] = self::featuredImageSchema($model, $model->name);
             }
@@ -190,12 +199,15 @@ final class Seo
                 $schemas[] = self::featuredImageSchema($model, $model->name);
             }
         } elseif ($model instanceof Article) {
-            $articleImage = self::articleServiceImage($model);
-            $schemas[] = array_filter(['@context' => 'https://schema.org', '@type' => 'Article', 'headline' => $model->title, 'description' => $model->excerpt, 'datePublished' => $model->published_at?->toAtomString(), 'dateModified' => $model->updated_at?->toAtomString(), 'mainEntityOfPage' => route('guide.show', $model->slug), 'author' => ['@id' => url('/').'#organization'], 'publisher' => ['@id' => url('/').'#organization'], 'image' => $model->featured_image ? asset('storage/'.$model->featured_image) : ($articleImage ? asset('storage/'.$articleImage->optimized_path) : null)]);
+            $articleImage = $model->relationLoaded('mediaAssets') ? $model->mediaAssets->first() : null;
+            $fallbackServiceImage = self::articleServiceImage($model);
+            $schemas[] = array_filter(['@context' => 'https://schema.org', '@type' => 'Article', 'headline' => $model->title, 'description' => $model->excerpt, 'datePublished' => $model->published_at?->toAtomString(), 'dateModified' => $model->updated_at?->toAtomString(), 'mainEntityOfPage' => route('guide.show', $model->slug), 'author' => ['@id' => url('/').'#organization'], 'publisher' => ['@id' => url('/').'#organization'], 'image' => $model->featured_image ? asset('storage/'.$model->featured_image) : ($articleImage?->imageUrl() ?: ($fallbackServiceImage ? asset('storage/'.$fallbackServiceImage->optimized_path) : null))]);
             if ($model->featured_image) {
                 $schemas[] = self::featuredImageSchema($model, $model->title);
             } elseif ($articleImage) {
-                $schemas[] = self::serviceImageSchema($articleImage, $articleImage->service);
+                $schemas[] = self::mediaAssetSchema($articleImage);
+            } elseif ($fallbackServiceImage) {
+                $schemas[] = self::serviceImageSchema($fallbackServiceImage, $fallbackServiceImage->service);
             }
         } elseif ($model instanceof Project) {
             $schemas[] = ['@context' => 'https://schema.org', '@type' => 'CreativeWork', 'name' => $model->title, 'description' => $model->excerpt, 'url' => route('projects.show', $model->slug), 'locationCreated' => ['@type' => 'Place', 'name' => $model->area->name], 'about' => ['@type' => 'Service', 'name' => $model->service->name]];
@@ -256,6 +268,20 @@ final class Seo
         ], fn ($value) => $value !== null && $value !== '');
     }
 
+    private static function mediaAssetSchema(MediaAsset $image): array
+    {
+        return array_filter([
+            '@context' => 'https://schema.org',
+            '@type' => 'ImageObject',
+            'contentUrl' => $image->imageUrl(),
+            'name' => $image->name,
+            'caption' => $image->caption,
+            'width' => $image->width,
+            'height' => $image->height,
+            'encodingFormat' => $image->mime_type,
+        ], fn ($value) => $value !== null && $value !== '');
+    }
+
     private static function videoSchema(Model $model): array
     {
         $title = $model->video_title ?: ($model->title ?? $model->name ?? 'فيديو');
@@ -286,7 +312,7 @@ final class Seo
             return $model->images->firstWhere('is_cover', true)?->optimized_path ?: $model->images->first()?->optimized_path ?: $model->featured_image;
         }
         if ($model instanceof Article) {
-            return $model->featured_image ?: self::articleServiceImage($model)?->optimized_path;
+            return $model->featured_image ?: ($model->relationLoaded('mediaAssets') ? $model->mediaAssets->first()?->path : null) ?: self::articleServiceImage($model)?->optimized_path;
         }
         if ($model instanceof Product || $model instanceof ProductCategory) {
             return $model->featured_image;

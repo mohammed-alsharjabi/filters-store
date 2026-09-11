@@ -17,7 +17,7 @@ class Product extends Model
     use HasArabicSlug, HasSeo, SoftDeletes;
 
     protected $fillable = [
-        'product_category_id', 'name', 'slug', 'sku', 'gtin', 'mpn', 'brand', 'excerpt', 'description',
+        'product_category_id', 'media_asset_id', 'catalog_source_key', 'name', 'slug', 'sku', 'gtin', 'mpn', 'brand', 'excerpt', 'description',
         'price', 'compare_at_price', 'currency', 'stock_quantity', 'track_stock', 'allow_backorder',
         'featured_image', 'featured_image_alt', 'featured_image_caption', 'condition', 'status',
         'is_featured', 'sort_order', 'published_at',
@@ -39,6 +39,11 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ProductCategory::class, 'product_category_id');
+    }
+
+    public function mediaAsset(): BelongsTo
+    {
+        return $this->belongsTo(MediaAsset::class);
     }
 
     public function tags(): BelongsToMany
@@ -72,20 +77,31 @@ class Product extends Model
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
             ->whereNotNull('featured_image')
+            ->where('featured_image', '!=', '');
+    }
+
+    public function scopeFeedReady(Builder $query): Builder
+    {
+        return $query->published()
             ->whereNotNull('brand')
             ->where('brand', '!=', '')
             ->whereNotNull('price')
             ->where('price', '>', 0);
     }
 
-    public function scopeFeedReady(Builder $query): Builder
+    public function scopePurchasable(Builder $query): Builder
     {
-        return $query->published();
+        return $query->published()->whereNotNull('price')->where('price', '>', 0);
     }
 
     public function isAvailable(): bool
     {
         return ! $this->track_stock || $this->stock_quantity > 0 || $this->allow_backorder;
+    }
+
+    public function isPurchasable(): bool
+    {
+        return $this->price !== null && (float) $this->price > 0 && $this->isAvailable();
     }
 
     public function availableQuantity(): int
@@ -113,6 +129,10 @@ class Product extends Model
 
     public function imageUrl(): ?string
     {
+        if ($this->relationLoaded('mediaAsset') && $this->mediaAsset) {
+            return $this->mediaAsset->imageUrl();
+        }
+
         return $this->featured_image ? asset('storage/'.ltrim($this->featured_image, '/')) : null;
     }
 }

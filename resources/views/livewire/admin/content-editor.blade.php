@@ -13,6 +13,9 @@
 
     <section class="admin-panel admin-primary-panel">
         <div class="admin-panel-head"><div><p class="admin-step">الخطوة 1</p><h2>المعلومات الأساسية</h2><small>هذه الحقول تكفي لإنشاء مسودة جديدة.</small></div><a href="{{ route('admin.content.index',$type) }}">العودة للقائمة</a></div>
+        @if(($definition['media_preview'] ?? false) && $model)
+            <figure class="admin-featured-preview"><img class="admin-preview" src="{{ $model->imageUrl() }}" alt="{{ $model->alt_text }}" width="1254" height="1254" loading="lazy"><figcaption>{{ $model->caption ?: $model->name }}</figcaption></figure>
+        @endif
         <div class="admin-form-grid">
             @foreach($basicFields as $name => $field)
                 @include('livewire.admin.partials.field', ['name' => $name, 'field' => $field])
@@ -29,10 +32,7 @@
                 <input type="file" wire:model="image" accept="image/jpeg,image/png,image/webp">
                 <p class="field-help">JPG أو PNG أو WebP، بحد أقصى 5MB وأبعاد لا تقل عن 400×300.</p>
                 @error('image')<small class="field-error">{{ $message }}</small>@enderror
-                @if($type === 'products' && $existingProductImages)
-                    <label class="full-field"><span>أو استخدم نسخة من صورة موجودة في المشروع</span><select wire:model="existingImage"><option value="">— اختر صورة —</option>@foreach($existingProductImages as $path => $label)<option value="{{ $path }}">{{ $label }}</option>@endforeach</select></label>
-                    @error('existingImage')<small class="field-error">{{ $message }}</small>@enderror
-                @endif
+                @if($type === 'products')<p class="field-help">يمكن بدل الرفع اختيار صورة مشتركة من مكتبة الوسائط في المعلومات الأساسية؛ لن ينشئ النظام نسخة أخرى من الملف.</p>@endif
                 @if($imageMetaNames)
                     <div class="admin-form-grid image-meta-grid">
                         @foreach(collect($definition['fields'])->only($imageMetaNames) as $name => $field)

@@ -158,7 +158,7 @@ class ServiceImageSystemTest extends TestCase
             ->assertSee('class="site-header"', false)
             ->assertDontSee('service-design-header', false)
             ->assertSee('class="home-hero-direct"', false)
-            ->assertSee('جميع صور الخدمة وخدماتها الفرعية')
+            ->assertSee('صور منتجات وتجهيزات مرتبطة بالخدمة')
             ->assertDontSee('data-gallery-toggle', false)
             ->assertSee('<picture>', false)
             ->assertSee('type="image/avif"', false)

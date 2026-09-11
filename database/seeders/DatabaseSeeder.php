@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             ServiceCatalogSeeder::class,
             ServiceAreaSeeder::class,
             LaunchArticleSeeder::class,
+            MediaCatalogSeeder::class,
             AdminUserSeeder::class,
         ]);
     }

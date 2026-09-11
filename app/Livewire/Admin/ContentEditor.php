@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Models\Article;
 use App\Models\InventoryMovement;
+use App\Models\MediaAsset;
 use App\Models\Product;
 use App\Models\Project;
 use App\Models\ProjectImage;
@@ -13,7 +14,6 @@ use App\Support\SeoSuggestionService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -34,8 +34,6 @@ class ContentEditor extends Component
     public array $seo = [];
 
     public $image;
-
-    public ?string $existingImage = null;
 
     public array $gallery = [];
 
@@ -127,7 +125,6 @@ class ContentEditor extends Component
             $rules['image'] = ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:min_width=400,min_height=300,max_width=8000,max_height=8000'];
         }
         if ($this->type === 'products') {
-            $rules['existingImage'] = ['nullable', Rule::in(array_keys($this->existingProductImages()))];
             $rules['data.sku'] = ['nullable', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($this->record)];
             $rules['data.gtin'] = ['nullable', 'string', 'max:32', Rule::unique('products', 'gtin')->ignore($this->record)];
         }
@@ -179,9 +176,7 @@ class ContentEditor extends Component
         $previousStockQuantity = $existingModel instanceof Product ? $existingModel->stock_quantity : 0;
         if ($this->type === 'products' && ($this->data['status'] ?? 'draft') === 'published') {
             $missing = collect([
-                'data.price' => blank($this->data['price'] ?? null) ? 'أدخل سعر المنتج قبل النشر.' : null,
-                'data.brand' => blank($this->data['brand'] ?? null) ? 'أدخل العلامة التجارية قبل النشر.' : null,
-                'image' => ! $this->image && ! $this->existingImage && blank($existingModel?->featured_image) ? 'أضف صورة WebP أو اختر صورة موجودة قبل النشر.' : null,
+                'image' => ! $this->image && blank($this->data['media_asset_id'] ?? null) && blank($existingModel?->featured_image) ? 'أضف صورة WebP أو اختر صورة من مكتبة الوسائط قبل النشر.' : null,
             ])->filter();
             if ($missing->isNotEmpty()) {
                 throw ValidationException::withMessages($missing->all());
@@ -195,13 +190,42 @@ class ContentEditor extends Component
         $previousFeaturedImage = null;
         if (($definition['image'] ?? false) && $this->image) {
             $previousFeaturedImage = $model->featured_image;
-            $model->featured_image = app(ResponsiveImageService::class)->storePrimaryImage($this->image, $this->type === 'products' ? 'products' : 'content');
-        } elseif ($this->type === 'products' && $this->existingImage) {
+            $model->featured_image = app(ResponsiveImageService::class)->storePrimaryImage($this->image, $this->type === 'products' ? 'catalog' : 'content');
+            if ($this->type === 'products') {
+                $absolutePath = Storage::disk('public')->path($model->featured_image);
+                [$width, $height] = getimagesize($absolutePath);
+                $contentHash = hash_file('sha256', $absolutePath);
+                $media = MediaAsset::query()->where('content_hash', $contentHash)->first();
+                if ($media) {
+                    Storage::disk('public')->delete($model->featured_image);
+                    $model->featured_image = $media->path;
+                } else {
+                    $media = MediaAsset::query()->create([
+                        'source_key' => 'admin-upload:'.$model->featured_image,
+                        'name' => $this->data['name'],
+                        'path' => $model->featured_image,
+                        'alt_text' => $this->data['featured_image_alt'] ?: $this->data['name'],
+                        'caption' => $this->data['featured_image_caption'] ?: null,
+                        'usage_notes' => 'صورة رُفعت من محرر المنتج ويمكن إعادة استخدامها دون نسخ الملف.',
+                        'mime_type' => 'image/webp',
+                        'width' => $width,
+                        'height' => $height,
+                        'file_size' => filesize($absolutePath),
+                        'content_hash' => $contentHash,
+                        'variants' => ['webp' => [['role' => 'gallery', 'width' => $width, 'height' => $height, 'path' => $model->featured_image]]],
+                        'sort_order' => (int) MediaAsset::query()->max('sort_order') + 1,
+                        'is_active' => true,
+                    ]);
+                }
+                $model->media_asset_id = $media->id;
+            }
+        } elseif ($this->type === 'products' && filled($this->data['media_asset_id'] ?? null)) {
             $previousFeaturedImage = $model->featured_image;
-            $newPath = 'products/'.Str::uuid().'.webp';
-            abort_unless(Storage::disk('public')->exists($this->existingImage), 422, 'الصورة المختارة غير موجودة.');
-            Storage::disk('public')->copy($this->existingImage, $newPath);
-            $model->featured_image = $newPath;
+            $media = MediaAsset::active()->findOrFail($this->data['media_asset_id']);
+            abort_unless(Storage::disk('public')->exists($media->path), 422, 'الصورة المختارة غير موجودة.');
+            $model->featured_image = $media->path;
+            $model->featured_image_alt = $this->data['featured_image_alt'] ?: $media->alt_text;
+            $model->featured_image_caption = $this->data['featured_image_caption'] ?: $media->caption;
         }
         $model->save();
         if ($model instanceof Product && $model->stock_quantity !== $previousStockQuantity) {
@@ -303,9 +327,7 @@ class ContentEditor extends Component
             : collect();
         $seoWarnings = app(SeoSuggestionService::class)->warnings($this->seo, $model);
 
-        $existingProductImages = $this->type === 'products' ? $this->existingProductImages() : [];
-
-        return view('livewire.admin.content-editor', compact('definition', 'options', 'model', 'seoWarnings', 'existingProductImages', 'inventoryMovements'))->layout('components.layouts.admin', ['title' => ($this->record ? 'تعديل ' : 'إضافة ').$definition['label']]);
+        return view('livewire.admin.content-editor', compact('definition', 'options', 'model', 'seoWarnings', 'inventoryMovements'))->layout('components.layouts.admin', ['title' => ($this->record ? 'تعديل ' : 'إضافة ').$definition['label']]);
     }
 
     private function applySeoSuggestions(bool $force): void
@@ -334,14 +356,5 @@ class ContentEditor extends Component
                 $this->seo[$field] = $suggestions[$field];
             }
         }
-    }
-
-    private function existingProductImages(): array
-    {
-        return collect(Storage::disk('public')->files('services'))
-            ->filter(fn (string $path): bool => str_ends_with(mb_strtolower($path), '.webp'))
-            ->mapWithKeys(fn (string $path): array => [$path => pathinfo($path, PATHINFO_FILENAME)])
-            ->sort()
-            ->all();
     }
 }

@@ -6,16 +6,16 @@ use App\Models\Area;
 use App\Models\Article;
 use App\Models\ArticleCategory;
 use App\Models\Material;
+use App\Models\MediaAsset;
+use App\Models\Product;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\ServiceCategory;
-use App\Models\ServiceImage;
 use App\Models\TrustItem;
 use App\Support\ArticleContent;
 use App\Support\Seo;
 use App\Support\SettingsRepository;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Collection;
 
 class PageController extends Controller
 {
@@ -38,40 +38,14 @@ class PageController extends Controller
             ->concat($services->whereNotIn('id', $serviceCards->pluck('id')))
             ->values();
         $heroService = $mainServices->firstWhere('name', 'تركيب فلاتر المياه بالرياض') ?: $mainServices->first();
-        $galleryImages = $this->homeGalleryImages();
+        $galleryImages = MediaAsset::active()->orderBy('sort_order')->orderBy('id')->get();
+        $featuredProducts = Product::published()->with(['category', 'mediaAsset', 'tags' => fn ($query) => $query->where('is_active', true)])
+            ->orderByDesc('is_featured')->orderBy('sort_order')->limit(8)->get();
         $trustItems = TrustItem::query()->where('is_active', true)->orderBy('sort_order')->get();
         $seo = Seo::page('فلاتر وتحلية المياه بالرياض | تركيب وصيانة', 'تركيب وصيانة فلاتر المياه وأجهزة ومحطات التحلية وأنظمة الضباب والرذاذ في الرياض. تواصل للحجز وإرسال صورة الجهاز.', $heroService);
         $seo['og_image'] = app(SettingsRepository::class)->public()['hero_image'] ?? config('site.hero_image');
 
-        return view('pages.home', compact('serviceCards', 'galleryImages', 'trustItems', 'seo'));
-    }
-
-    /**
-     * صور المعرض الرئيسي من قاعدة البيانات: كل صور الخدمات المنشورة موزعة بالتناوب
-     * بين الخدمات حتى تظهر جميع الخدمات في أعلى المعرض دون تكرار الصورة نفسها.
-     */
-    private function homeGalleryImages(): Collection
-    {
-        $groups = ServiceImage::query()
-            ->where('processing_status', 'processed')
-            ->whereHas('service', fn ($query) => $query->published())
-            ->with('service:id,name,slug,sort_order')
-            ->orderByDesc('is_cover')
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get()
-            ->unique('content_hash')
-            ->groupBy('service_id')
-            ->sortBy(fn ($images) => $images->first()->service?->sort_order ?? 0)
-            ->values();
-
-        if ($groups->isEmpty()) {
-            return collect();
-        }
-
-        return collect(range(0, $groups->max(fn ($images) => $images->count()) - 1))
-            ->flatMap(fn (int $index) => $groups->map(fn ($images) => $images->values()->get($index))->filter()->values())
-            ->values();
+        return view('pages.home', compact('serviceCards', 'galleryImages', 'featuredProducts', 'trustItems', 'seo'));
     }
 
     public function about(): View
@@ -116,9 +90,13 @@ class PageController extends Controller
             'seo',
         ])->firstOrFail();
         $isMainService = $service->parent_service_id === null;
-        $galleryImages = $isMainService
-            ? $service->images->concat($service->children->flatMap->images)->unique('content_hash')->values()
-            : $service->images->unique('content_hash')->values();
+        $legacyImages = $service->images->where('processing_status', 'processed')->unique('optimized_path')->values()->take(10);
+        $legacyPaths = $legacyImages->pluck('optimized_path')->filter();
+        $mediaAssets = $service->mediaAssets()->active()->reorder()
+            ->when($legacyPaths->isNotEmpty(), fn ($query) => $query->whereNotIn('media_assets.path', $legacyPaths))
+            ->inRandomOrder()->limit(max(0, 10 - $legacyImages->count()))->get();
+        $galleryImages = $legacyImages->concat($mediaAssets)->unique(fn ($image) => $image->optimized_path ?? $image->path)->take(10)->values();
+        $service->setRelation('mediaAssets', $mediaAssets);
         $childServices = $isMainService ? $service->children : collect();
         $related = Service::published()->whereKeyNot($service->id)
             ->where(fn ($query) => $query
@@ -181,6 +159,7 @@ class PageController extends Controller
     {
         $article = Article::published()->where('slug', $slug)->with([
             'category',
+            'mediaAssets' => fn ($query) => $query->active(),
             'services' => fn ($query) => $query->published()->with(['category', 'images' => fn ($images) => $images->where('processing_status', 'processed')->reorder()->orderByDesc('is_cover')->orderBy('sort_order')->limit(4)]),
             'faqs' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
             'relatedArticles' => fn ($q) => $q->published()->with('category')->limit(4),
@@ -188,8 +167,8 @@ class PageController extends Controller
         ])->firstOrFail();
         $articleSections = $content->sections($article->body);
         $readingMinutes = $content->readingMinutes($article->body);
-        $articleImages = $article->services->flatMap->images->unique('id')->values();
-        $articleImage = $articleImages->firstWhere('is_cover', true) ?: $articleImages->first();
+        $articleImages = $article->mediaAssets->unique('id')->values();
+        $articleImage = $articleImages->first();
         $seo = Seo::page($article->title, $article->excerpt ?: 'مقال من دليل فلاتر وتحلية المياه.', $article, $this->crumbs(['المقالات' => route('guide.index'), $article->title => url()->current()]), [Seo::faqSchema($article->faqs)]);
 
         return view('pages.guide.show', compact('article', 'articleSections', 'readingMinutes', 'articleImages', 'articleImage', 'seo'));

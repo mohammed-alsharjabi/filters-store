@@ -5,8 +5,9 @@
 @php
     $orderedImages = $service->images->where('processing_status', 'processed')->sortBy('sort_order')->values();
     $heroImage = $orderedImages->firstWhere('is_cover', true) ?: $orderedImages->first() ?: $galleryImages->first();
-    $galleryImages = $galleryImages->sortBy('sort_order')->unique('id')->values();
-    $aboutImage = $galleryImages->first(fn ($image) => $image->id !== $heroImage?->id && ($image->width ?? 0) >= ($image->height ?? 0)) ?: $galleryImages->get(1) ?: $heroImage;
+    $galleryImages = $galleryImages->values();
+    $heroPath = $heroImage?->optimized_path ?? $heroImage?->path;
+    $aboutImage = $galleryImages->first(fn ($image) => ($image->optimized_path ?? $image->path) !== $heroPath && ($image->width ?? 0) >= ($image->height ?? 0)) ?: $galleryImages->get(1) ?: $heroImage;
     $hasHeroVisual = filled($service->featured_image) || $heroImage;
     $lines = fn ($value) => collect(preg_split('/\R/u', (string) $value))->map('trim')->filter()->values();
     $types = $lines($service->types);
@@ -77,7 +78,7 @@
     @if($galleryImages->isNotEmpty())
     <section class="srvc-section srvc-works" id="works">
         <div class="srvc-shell">
-            <header class="srvc-heading" data-reveal><h2>{{ $isMainService ? 'جميع صور الخدمة وخدماتها الفرعية' : 'جميع صور '.$service->name }}</h2><i aria-hidden="true"></i></header>
+            <header class="srvc-heading" data-reveal><h2>صور منتجات وتجهيزات مرتبطة بالخدمة</h2><i aria-hidden="true"></i><p>يعرض النظام حتى 10 صور مناسبة بترتيب متجدد ومن دون تكرار داخل المعرض.</p></header>
             <div class="srvc-gallery" data-service-gallery>
                 @foreach($galleryImages as $image)
                     @php($large = $image->variant('gallery')['path'] ?? $image->optimized_path)

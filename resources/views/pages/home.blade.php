@@ -65,6 +65,20 @@
     </div>
 </section>
 
+@if($featuredProducts->isNotEmpty())
+<section class="home-products section-block" aria-labelledby="home-products-title">
+    <div class="container-shell">
+        <header class="home-section-heading" data-reveal>
+            <p>منتجات مختارة</p>
+            <h2 id="home-products-title">فلاتر وأجهزة تحلية متاحة للاستفسار</h2>
+            <span>كل منتج مرتبط ببياناته وصورته في قاعدة البيانات، وتظهر الأسعار والمخزون فور اعتمادها من الإدارة.</span>
+        </header>
+        <div class="product-grid home-product-grid">@foreach($featuredProducts as $product)<x-product-card :product="$product" />@endforeach</div>
+        <div class="home-products-action"><a class="button button-outline" href="{{ route('products.index') }}">عرض جميع المنتجات</a></div>
+    </div>
+</section>
+@endif
+
 <x-geo-divider variant="chevron" class="home-divider home-divider-tight" />
 
 <section class="home-bridge" aria-label="طريقة عملنا في سطور">
@@ -93,20 +107,20 @@
 @if($galleryImages->isNotEmpty())
 <x-geo-divider variant="bowtie" class="home-divider" />
 
-<section class="home-gallery" id="gallery" aria-label="معرض أعمالنا">
+<section class="home-gallery" id="gallery" aria-label="منتجاتنا وأعمالنا">
     <div class="container-shell">
         <header class="home-section-heading" data-reveal>
             <p>المعرض</p>
-            <h2>صور خدمات الفلاتر والتحلية</h2>
-            <span>صور مرتبطة بالخدمات المتاحة. اضغط على أي صورة لتكبيرها.</span>
+            <h2>منتجاتنا وأعمالنا</h2>
+            <span>جميع الصور التسع عشرة مرتبطة بالمنتجات والخدمات والمقالات من مكتبة وسائط واحدة. اضغط على أي صورة لتكبيرها.</span>
         </header>
 
         <div class="home-gallery-grid">
             @foreach($galleryImages as $image)
-                @php($large = $image->variant('gallery')['path'] ?? $image->optimized_path)
+                @php($large = $image->variant('gallery')['path'] ?? $image->path)
                 <figure>
-                    <button type="button" data-lightbox-item data-lightbox-src="{{ asset('storage/'.$large).'?v='.($image->updated_at?->timestamp ?? 1) }}" data-lightbox-alt="{{ $image->alt_text ?: $image->service?->name }}" data-lightbox-caption="{{ $image->caption ?: $image->service?->name }}" aria-label="تكبير صورة {{ $image->service?->name }}">
-                        <x-responsive-image :image="$image" :alt="$image->alt_text ?: $image->service?->name" variant="thumbnail" loading="lazy" sizes="(max-width: 560px) 50vw, (max-width: 1050px) 33vw, 25vw" />
+                    <button type="button" data-lightbox-item data-lightbox-src="{{ asset('storage/'.$large).'?v='.($image->updated_at?->timestamp ?? 1) }}" data-lightbox-alt="{{ $image->alt_text }}" data-lightbox-caption="{{ $image->caption ?: $image->name }}" aria-label="تكبير صورة {{ $image->name }}">
+                        <x-responsive-image :image="$image" :alt="$image->alt_text" variant="thumbnail" loading="lazy" sizes="(max-width: 560px) 50vw, (max-width: 1050px) 33vw, 25vw" />
                     </button>
                 </figure>
             @endforeach

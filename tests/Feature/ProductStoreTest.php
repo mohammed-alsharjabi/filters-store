@@ -18,17 +18,21 @@ class ProductStoreTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_seeder_keeps_the_catalog_empty_until_real_products_are_added(): void
+    public function test_seeder_publishes_the_nineteen_image_products_without_inventing_prices(): void
     {
         $this->seed();
 
-        $this->assertDatabaseCount('products', 0);
-        $this->assertDatabaseCount('product_categories', 0);
-        $this->assertDatabaseCount('product_tags', 0);
+        $this->assertDatabaseCount('products', 19);
+        $this->assertDatabaseCount('product_categories', 3);
+        $this->assertDatabaseCount('media_assets', 19);
+        $this->assertSame(19, Product::published()->count());
+        $this->assertSame(0, Product::feedReady()->count());
+        $this->assertSame(0, Product::query()->whereNotNull('price')->count());
         $this->get(route('products.index'))
             ->assertOk()
-            ->assertSee('لا توجد منتجات منشورة بعد')
-            ->assertSee('<meta name="robots" content="noindex,follow">', false);
+            ->assertSee('فلتر جامبو M-PURE ثلاث مراحل بقاعدة بيضاء')
+            ->assertSee('السعر عند الطلب')
+            ->assertSee('<meta name="robots" content="index,follow,max-image-preview:large">', false);
     }
 
     public function test_product_and_category_pages_have_independent_meta_and_dynamic_schema(): void
@@ -249,7 +253,7 @@ class ProductStoreTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
 
-        $product = Product::query()->sole();
+        $product = Product::query()->where('name', 'منتج حقيقي قيد الإعداد')->sole();
         $this->assertNull($product->brand);
         $this->assertSame(4, $product->stock_quantity);
         $this->assertDatabaseHas(InventoryMovement::class, [

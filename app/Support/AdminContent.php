@@ -7,6 +7,7 @@ use App\Models\Article;
 use App\Models\ArticleCategory;
 use App\Models\Faq;
 use App\Models\Material;
+use App\Models\MediaAsset;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTag;
@@ -23,6 +24,11 @@ final class AdminContent
     public static function all(): array
     {
         return [
+            'media-assets' => ['label' => 'مكتبة الوسائط', 'model' => MediaAsset::class, 'title' => 'name', 'columns' => ['name' => 'اسم الصورة', 'path' => 'المسار المشترك', 'is_active' => 'نشطة'], 'basic_fields' => ['name', 'alt_text', 'is_active'], 'fields' => [
+                'name' => self::text('اسم الصورة', true), 'alt_text' => self::text('النص البديل', true),
+                'caption' => self::textarea('تعليق الصورة'), 'usage_notes' => self::textarea('ملاحظات الاستخدام'),
+                'sort_order' => self::number('الترتيب'), 'is_active' => array_replace(self::boolean('نشطة'), ['default' => true]),
+            ], 'seo' => false, 'media_preview' => true],
             'product-categories' => ['label' => 'تصنيفات المنتجات', 'model' => ProductCategory::class, 'title' => 'name', 'columns' => ['name' => 'التصنيف', 'is_active' => 'نشط', 'sort_order' => 'الترتيب'], 'basic_fields' => ['name', 'description', 'is_active'], 'image_meta_fields' => ['featured_image_alt', 'featured_image_caption'], 'fields' => [
                 'name' => self::text('اسم التصنيف', true), 'slug' => self::text('الرابط القصير'), 'description' => self::textarea('وصف التصنيف'),
                 'featured_image_alt' => self::text('النص البديل للصورة'), 'featured_image_caption' => self::textarea('تعليق الصورة'),
@@ -31,8 +37,8 @@ final class AdminContent
             'product-tags' => ['label' => 'وسوم المنتجات', 'model' => ProductTag::class, 'title' => 'name', 'columns' => ['name' => 'الوسم', 'slug' => 'الرابط الداخلي', 'is_active' => 'نشط'], 'fields' => [
                 'name' => self::text('اسم الوسم', true), 'slug' => self::text('الرابط القصير'), 'is_active' => array_replace(self::boolean('نشط'), ['default' => true]),
             ], 'seo' => false],
-            'products' => ['label' => 'المنتجات', 'model' => Product::class, 'title' => 'name', 'columns' => ['name' => 'المنتج', 'price' => 'السعر', 'stock_quantity' => 'المخزون', 'status' => 'الحالة'], 'basic_fields' => ['product_category_id', 'name', 'excerpt', 'price', 'stock_quantity', 'status'], 'image_meta_fields' => ['featured_image_alt', 'featured_image_caption'], 'fields' => [
-                'product_category_id' => self::select('التصنيف', ProductCategory::class, true), 'name' => self::text('اسم المنتج', true), 'slug' => self::text('الرابط القصير'),
+            'products' => ['label' => 'المنتجات', 'model' => Product::class, 'title' => 'name', 'columns' => ['name' => 'المنتج', 'price' => 'السعر', 'stock_quantity' => 'المخزون', 'status' => 'الحالة'], 'basic_fields' => ['product_category_id', 'media_asset_id', 'name', 'excerpt', 'price', 'stock_quantity', 'status'], 'image_meta_fields' => ['featured_image_alt', 'featured_image_caption'], 'fields' => [
+                'product_category_id' => self::select('التصنيف', ProductCategory::class, true), 'media_asset_id' => self::select('صورة من مكتبة الوسائط', MediaAsset::class), 'name' => self::text('اسم المنتج', true), 'slug' => self::text('الرابط القصير'),
                 'sku' => self::text('رمز SKU'), 'gtin' => self::text('GTIN إن وجد'), 'mpn' => self::text('MPN إن وجد'), 'brand' => self::text('العلامة التجارية'),
                 'excerpt' => self::textarea('الوصف المختصر'), 'description' => self::textarea('وصف المنتج'),
                 'price' => self::decimal('السعر بالريال'), 'compare_at_price' => self::decimal('السعر قبل الخصم إن وجد'), 'currency' => self::options('العملة', ['SAR' => 'ريال سعودي']),

@@ -35,6 +35,13 @@ class Article extends Model
         return $this->belongsToMany(Service::class);
     }
 
+    public function mediaAssets(): BelongsToMany
+    {
+        return $this->belongsToMany(MediaAsset::class, 'article_media_asset')
+            ->withPivot('sort_order')
+            ->orderByPivot('sort_order');
+    }
+
     public function relatedArticles(): BelongsToMany
     {
         return $this->belongsToMany(self::class, 'article_relations', 'article_id', 'related_article_id');
