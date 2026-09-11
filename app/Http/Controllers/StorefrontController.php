@@ -15,7 +15,6 @@ class StorefrontController extends Controller
             ->orderByDesc('is_featured')->orderBy('sort_order')->latest('published_at')->paginate(12);
         $categories = ProductCategory::query()->where('is_active', true)
             ->whereHas('products', fn ($query) => $query->published())
-            ->withCount(['products' => fn ($query) => $query->published()])
             ->orderBy('sort_order')->get();
         $seo = Seo::page('منتجات فلاتر وتحلية المياه بالرياض', 'تصفح منتجات فلاتر وتحلية المياه المتوفرة وأسعارها ومخزونها، وأضف المنتج للسلة أو اطلبه مباشرة عبر واتساب.', null, $this->crumbs(['المنتجات' => route('products.index')]));
         $seo = Seo::paginate($products->isEmpty() ? Seo::noindex($seo) : $seo, $products);

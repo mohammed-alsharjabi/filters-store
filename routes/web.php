@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\LeadImageController;
+use App\Http\Controllers\Admin\OrderReceiptController as AdminOrderReceiptController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\OrderReceiptController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProductFeedController;
 use App\Http\Controllers\SeoController;
@@ -50,6 +52,7 @@ Route::delete('/السلة/{productId}', [CartController::class, 'remove'])->whe
 Route::get('/إتمام-الطلب', [CheckoutController::class, 'show'])->name('checkout.show');
 Route::post('/إتمام-الطلب', [CheckoutController::class, 'submit'])->middleware('throttle:checkout')->name('checkout.submit');
 Route::get('/تم-استلام-الطلب/{token}', [CheckoutController::class, 'success'])->whereUuid('token')->name('checkout.success');
+Route::post('/تم-استلام-الطلب/{token}/سند-التحويل', [OrderReceiptController::class, 'store'])->whereUuid('token')->middleware('throttle:checkout')->name('checkout.receipt.store');
 Route::get('/feeds/google-products.xml', [ProductFeedController::class, 'google'])->name('feeds.google-products');
 Route::get('/feeds/meta-products.csv', [ProductFeedController::class, 'meta'])->name('feeds.meta-products');
 Route::get('/sitemap.xml', [SeoController::class, 'index'])->name('sitemap');
@@ -73,6 +76,7 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/settings', SettingsEditor::class)->name('settings');
     Route::get('/leads', LeadInbox::class)->name('leads');
     Route::get('/orders', ProductOrderInbox::class)->name('orders');
+    Route::get('/orders/{order}/receipt', AdminOrderReceiptController::class)->name('orders.receipt');
     Route::get('/leads/images/{leadImage}', LeadImageController::class)->name('leads.images.download');
     Route::get('/content/{type}', ContentIndex::class)->name('content.index');
     Route::get('/content/{type}/create', ContentEditor::class)->name('content.create');

@@ -53,10 +53,10 @@ class MediaCatalogIntegrationTest extends TestCase
             ->assertOk()
             ->assertSee($product->name)
             ->assertSee($product->featured_image_alt)
-            ->assertSee('السعر عند الطلب')
+            ->assertSee('750.00')
             ->assertSee('view_item', false)
             ->assertSee('"@type":"Product"', false)
-            ->assertDontSee('"offers"', false);
+            ->assertSee('"offers"', false);
 
         Product::published()->each(function (Product $publishedProduct): void {
             $this->get(route('products.show', $publishedProduct->slug))

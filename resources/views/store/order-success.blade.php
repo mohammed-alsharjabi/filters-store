@@ -3,6 +3,8 @@
 @if($dataLayerEvent)@push('dataLayer')<script>window.dataLayer.push(@js($dataLayerEvent));</script>@endpush @endif
 @section('content')
 <section class="order-success section-block"><div class="container-narrow">
+    @if(session('success'))<div class="store-notice" role="status">{{ session('success') }}</div>@endif
+    @error('receipt')<div class="notice-error" role="alert">{{ $message }}</div>@enderror
     <div class="order-success-mark" aria-hidden="true">✓</div>
     <p class="eyebrow">تم تسجيل الطلب</p><h1>شكرًا، استلمنا طلبك</h1><p>رقم الطلب <strong dir="ltr">{{ $order->order_number }}</strong>. احتفظ به عند التواصل أو إرسال إشعار التحويل.</p>
     <div class="order-success-grid">
@@ -13,6 +15,13 @@
             @else
                 <div class="bank-pending">سيرسل فريق المتجر بيانات الحساب المعتمدة عند مراجعة الطلب.</div>
             @endif
+            <form class="receipt-upload-form" method="POST" action="{{ route('checkout.receipt.store', $order->public_token) }}" enctype="multipart/form-data">
+                @csrf
+                <label for="receipt"><strong>{{ $order->receipt_path ? 'استبدال سند التحويل' : 'إرفاق سند التحويل' }}</strong><span>صورة JPG أو PNG أو WebP أو ملف PDF — بحد أقصى 5 ميجابايت.</span></label>
+                <input id="receipt" type="file" name="receipt" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+                <button class="button button-primary" type="submit">{{ $order->receipt_path ? 'رفع سند جديد' : 'رفع السند' }}</button>
+                @if($order->receipt_uploaded_at)<small>تم استلام السند بتاريخ {{ $order->receipt_uploaded_at->format('Y-m-d H:i') }} وحالة الطلب الآن: {{ \App\Models\Order::STATUS_LABELS[$order->status] ?? $order->status }}.</small>@endif
+            </form>
         </section>
     </div>
     <div class="order-success-actions"><a class="button product-whatsapp-button" href="{{ $siteSettings['whatsapp_url'].'?text='.rawurlencode('مرحبًا، أود متابعة طلب المنتجات رقم '.$order->order_number) }}" target="_blank" rel="noopener">متابعة عبر واتساب</a><a class="button button-outline" href="{{ route('products.index') }}">العودة للمنتجات</a></div>

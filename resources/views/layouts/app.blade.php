@@ -51,6 +51,12 @@
 <body class="@yield('body-class')">
     <a href="#main-content" class="skip-link">انتقل إلى المحتوى</a>
     @include('partials.header')
+    @if(session('success') && request()->routeIs('home'))
+        <div class="store-flash-toast" role="status">
+            <span>{{ session('success') }}</span>
+            <a href="{{ route('cart.show') }}">عرض السلة</a>
+        </div>
+    @endif
     <main id="main-content">@yield('content')</main>
     @include('partials.footer')
     @php

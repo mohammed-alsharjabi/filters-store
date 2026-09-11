@@ -85,7 +85,10 @@ class CheckoutService
 
         foreach ($lines as $index => $line) {
             $product = $line['product'];
-            $message->push(($index + 1).'. '.$product->name.' × '.$line['quantity'].' — '.$this->cart->formatCents($line['line_cents']).' ر.س');
+            $message->push(($index + 1).'. '.$product->name.' × '.$line['quantity']);
+            $message->push('   سعر الوحدة: '.$this->cart->formatCents($line['unit_cents']).' ر.س — الإجمالي: '.$this->cart->formatCents($line['line_cents']).' ر.س');
+            $message->push('   التصنيف: '.$product->category->name);
+            $message->push('   الرابط: '.route('products.show', $product->slug));
         }
 
         $message->push('');

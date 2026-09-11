@@ -66,14 +66,24 @@
 </section>
 
 @if($featuredProducts->isNotEmpty())
-<section class="home-products section-block" aria-labelledby="home-products-title">
+<section id="home-products" class="home-products section-block" aria-labelledby="home-products-title">
     <div class="container-shell">
         <header class="home-section-heading" data-reveal>
             <p>منتجات مختارة</p>
             <h2 id="home-products-title">فلاتر وأجهزة تحلية متاحة للاستفسار</h2>
-            <span>كل منتج مرتبط ببياناته وصورته في قاعدة البيانات، وتظهر الأسعار والمخزون فور اعتمادها من الإدارة.</span>
+            <span>اسحب المنتجات أو استخدم الأسهم، ثم افتح المنتج أو أضفه مباشرة إلى السلة.</span>
         </header>
-        <div class="product-grid home-product-grid">@foreach($featuredProducts as $product)<x-product-card :product="$product" />@endforeach</div>
+        <div class="home-products-carousel" data-home-products data-reveal>
+            <button class="home-products-arrow home-products-next" type="button" data-home-products-next aria-label="عرض المنتجات التالية">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="home-product-track" data-home-products-track tabindex="0" aria-label="منتجات مختارة قابلة للسحب">
+                @foreach($featuredProducts as $product)<x-product-card :product="$product" />@endforeach
+            </div>
+            <button class="home-products-arrow home-products-prev" type="button" data-home-products-prev aria-label="عرض المنتجات السابقة">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+        </div>
         <div class="home-products-action"><a class="button button-outline" href="{{ route('products.index') }}">عرض جميع المنتجات</a></div>
     </div>
 </section>

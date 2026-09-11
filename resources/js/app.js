@@ -95,6 +95,18 @@ document.querySelectorAll('[data-related-carousel]').forEach((carousel) => {
     carousel.querySelector('[data-related-next]')?.addEventListener('click', () => move(-1));
 });
 
+document.querySelectorAll('[data-home-products]').forEach((carousel) => {
+    const track = carousel.querySelector('[data-home-products-track]');
+    const move = (direction) => {
+        const card = track?.querySelector('.product-card');
+        if (!track || !card) return;
+        const gap = Number.parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap || '0');
+        track.scrollBy({ left: direction * (card.getBoundingClientRect().width + gap), behavior: reducedMotion ? 'auto' : 'smooth' });
+    };
+    carousel.querySelector('[data-home-products-next]')?.addEventListener('click', () => move(-1));
+    carousel.querySelector('[data-home-products-prev]')?.addEventListener('click', () => move(1));
+});
+
 document.querySelectorAll('[data-quantity-stepper]').forEach((stepper) => {
     const input = stepper.querySelector('input[type="number"]');
     if (!input) return;

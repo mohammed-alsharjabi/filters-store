@@ -73,13 +73,19 @@ class CheckoutController extends Controller
 
     public function productWhatsapp(string $slug, CheckoutService $checkout): View
     {
-        $product = Product::published()->where('slug', $slug)->with('category')->firstOrFail();
-        $message = implode("\n", [
+        $product = Product::published()->where('slug', $slug)->with(['category', 'tags' => fn ($query) => $query->where('is_active', true)])->firstOrFail();
+        $message = collect([
             '*طلب منتج من موقع فلاتر وتحلية المياه بالرياض*',
             'المنتج: '.$product->name,
+            'التصنيف: '.$product->category->name,
+            $product->brand ? 'العلامة التجارية: '.$product->brand : null,
+            $product->sku ? 'رمز المنتج: '.$product->sku : null,
             'السعر: '.($product->price ? number_format((float) $product->price, 2).' ر.س' : 'عند الطلب'),
+            'التوفر: '.($product->isAvailable() ? 'متوفر للطلب' : 'غير متوفر حاليًا'),
+            $product->tags->isNotEmpty() ? 'المواصفات: '.$product->tags->pluck('name')->implode('، ') : null,
+            $product->excerpt ? 'التفاصيل: '.$product->excerpt : null,
             'رابط المنتج: '.route('products.show', $product->slug),
-        ]);
+        ])->filter(fn ($line) => $line !== null)->implode("\n");
         $whatsappUrl = $checkout->whatsappUrl($message);
         $dataLayerEvent = ['event' => 'whatsapp_order', 'ecommerce' => [
             'currency' => 'SAR', 'value' => (float) ($product->price ?? 0), 'items' => [[

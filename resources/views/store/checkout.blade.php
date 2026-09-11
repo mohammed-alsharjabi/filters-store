@@ -16,6 +16,6 @@
         <input type="text" name="website" tabindex="-1" autocomplete="off" class="honeypot" aria-hidden="true">
         <div class="checkout-actions full-field"><button class="button product-whatsapp-button" type="submit" name="action" value="whatsapp">إرسال الطلب إلى واتساب</button><button class="button button-primary" type="submit" name="action" value="store">تسجيل الطلب في المتجر</button></div>
     </form>
-    <aside class="checkout-summary"><h2>تفاصيل الطلب</h2><ul>@foreach($items as $item)<li><span>{{ $item['product']->name }} <small>× {{ $item['quantity'] }}</small></span><b>{{ number_format($item['line_cents']/100, 2) }} ر.س</b></li>@endforeach</ul><div><span>الإجمالي</span><strong>{{ number_format($subtotalCents/100, 2) }} ر.س</strong></div><section class="bank-method"><b>طريقة الدفع</b><strong>تحويل بنكي فقط</strong><p>عند تسجيل الطلب ستظهر بيانات التحويل المعتمدة إن كانت مضافة من إدارة الموقع.</p></section></aside>
+    <aside class="checkout-summary"><h2>تفاصيل الطلب</h2><ul>@foreach($items as $item)<li><span>{{ $item['product']->name }} <small>× {{ $item['quantity'] }}</small></span><b>{{ number_format($item['line_cents']/100, 2) }} ر.س</b></li>@endforeach</ul><div><span>الإجمالي</span><strong>{{ number_format($subtotalCents/100, 2) }} ر.س</strong></div><section class="bank-method"><b>طريقة الدفع</b><strong>تحويل بنكي فقط</strong><p>بعد تسجيل الطلب سيظهر رقم الطلب وبيانات التحويل، ويمكنك رفع صورة السند أو ملف PDF من صفحة تأكيد الطلب.</p></section></aside>
 </div></section>
 @endsection

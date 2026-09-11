@@ -11,7 +11,7 @@
                 <div class="admin-order-customer"><span>{{ $order->customer_name }}</span><a href="tel:{{ $order->customer_phone }}" dir="ltr">{{ $order->customer_phone }}</a><span>{{ $order->area }}</span>@if($order->address)<span>{{ $order->address }}</span>@endif</div>
                 <ul>@foreach($order->items as $item)<li><span>{{ $item->product_name }} × {{ $item->quantity }}</span><b>{{ number_format((float) $item->line_total, 2) }} ر.س</b></li>@endforeach</ul>
                 @if($order->notes)<p class="admin-order-notes">{{ $order->notes }}</p>@endif
-                <footer><span>الدفع: تحويل بنكي</span><select aria-label="حالة الطلب {{ $order->order_number }}" wire:change="updateStatus({{ $order->id }}, $event.target.value)" @disabled($order->status === 'cancelled')>@foreach(\App\Models\Order::STATUS_LABELS as $value => $label)<option value="{{ $value }}" @selected($order->status === $value)>{{ $label }}</option>@endforeach</select></footer>
+                <footer><span>الدفع: تحويل بنكي</span>@if($order->receipt_path)<a class="admin-receipt-link" href="{{ route('admin.orders.receipt', $order) }}">تنزيل سند التحويل</a>@else<span class="admin-receipt-pending">لم يُرفع السند بعد</span>@endif<select aria-label="حالة الطلب {{ $order->order_number }}" wire:change="updateStatus({{ $order->id }}, $event.target.value)" @disabled($order->status === 'cancelled')>@foreach(\App\Models\Order::STATUS_LABELS as $value => $label)<option value="{{ $value }}" @selected($order->status === $value)>{{ $label }}</option>@endforeach</select></footer>
             </article>
         @empty
             <div class="empty-state">لا توجد طلبات منتجات حتى الآن.</div>

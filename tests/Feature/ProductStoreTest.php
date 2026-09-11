@@ -11,6 +11,8 @@ use App\Models\ProductCategory;
 use App\Models\ProductTag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -18,7 +20,7 @@ class ProductStoreTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_seeder_publishes_the_nineteen_image_products_without_inventing_prices(): void
+    public function test_seeder_publishes_the_nineteen_image_products_with_editable_initial_prices(): void
     {
         $this->seed();
 
@@ -26,12 +28,13 @@ class ProductStoreTest extends TestCase
         $this->assertDatabaseCount('product_categories', 3);
         $this->assertDatabaseCount('media_assets', 19);
         $this->assertSame(19, Product::published()->count());
-        $this->assertSame(0, Product::feedReady()->count());
-        $this->assertSame(0, Product::query()->whereNotNull('price')->count());
+        $this->assertSame(16, Product::feedReady()->count());
+        $this->assertSame(19, Product::query()->whereNotNull('price')->count());
         $this->get(route('products.index'))
             ->assertOk()
             ->assertSee('فلتر جامبو M-PURE ثلاث مراحل بقاعدة بيضاء')
-            ->assertSee('السعر عند الطلب')
+            ->assertSee('750.00')
+            ->assertDontSee('اختر المنتج المناسب واطلب السعر والتوفر مباشرة عبر واتساب.')
             ->assertSee('<meta name="robots" content="index,follow,max-image-preview:large">', false);
     }
 
@@ -185,6 +188,51 @@ class ProductStoreTest extends TestCase
         $this->assertDatabaseCount('orders', 0);
         $this->assertSame(5, $product->fresh()->stock_quantity);
         $this->assertSame([$product->id => 1], session('store.cart.v1'));
+    }
+
+    public function test_direct_product_whatsapp_message_contains_the_product_details(): void
+    {
+        $this->seed();
+        $product = Product::published()->with('category')->orderBy('sort_order')->firstOrFail();
+        $response = $this->get(route('products.whatsapp', $product->slug))->assertOk();
+        $decoded = rawurldecode(html_entity_decode($response->getContent(), ENT_QUOTES | ENT_HTML5));
+
+        $this->assertStringContainsString('المنتج: '.$product->name, $decoded);
+        $this->assertStringContainsString('التصنيف: '.$product->category->name, $decoded);
+        $this->assertStringContainsString('العلامة التجارية: '.$product->brand, $decoded);
+        $this->assertStringContainsString('السعر: 750.00 ر.س', $decoded);
+        $this->assertStringContainsString('رابط المنتج: '.route('products.show', $product->slug), $decoded);
+        $response->assertSee('whatsapp_order', false);
+    }
+
+    public function test_customer_can_upload_a_private_transfer_receipt_and_admin_can_download_it(): void
+    {
+        Storage::fake('local');
+        $this->seed();
+        [, $product] = $this->catalogProduct();
+        $this->post(route('cart.add', $product->slug), ['quantity' => 1]);
+        $this->post(route('checkout.submit'), [
+            'action' => 'store',
+            'name' => 'محمد أحمد',
+            'phone' => '0501234567',
+            'area' => 'حي المونسية',
+            'terms' => '1',
+        ]);
+        $order = Order::query()->sole();
+
+        $this->post(route('checkout.receipt.store', $order->public_token), [
+            'receipt' => UploadedFile::fake()->create('سند-التحويل.pdf', 180, 'application/pdf'),
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $order->refresh();
+        $this->assertSame('payment_review', $order->status);
+        $this->assertNotNull($order->receipt_uploaded_at);
+        Storage::disk('local')->assertExists($order->receipt_path);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $this->actingAs($admin)->get(route('admin.orders.receipt', $order))
+            ->assertOk()
+            ->assertDownload();
     }
 
     public function test_price_and_stock_validation_reject_unavailable_quantities(): void

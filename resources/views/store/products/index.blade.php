@@ -5,10 +5,10 @@
     <div class="store-shell">
         <header class="store-catalog-header">
             <nav class="page-breadcrumbs" aria-label="مسار الصفحة"><a href="{{ route('home') }}">الرئيسية</a><span>/</span><b>المنتجات</b></nav>
-            <div><div><span class="store-kicker">المتجر</span><h1>منتجات فلاتر وتحلية المياه</h1><p>اختر المنتج المناسب واطلب السعر والتوفر مباشرة عبر واتساب.</p></div><a class="store-cart-shortcut" href="{{ route('cart.show') }}" aria-label="فتح سلة المشتريات"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h2l1.7 9.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7M10 20h.01M18 20h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>السلة</span></a></div>
+            <div><div><span class="store-kicker">المتجر</span><h1>منتجات فلاتر وتحلية المياه</h1></div><a class="store-cart-shortcut" href="{{ route('cart.show') }}" aria-label="فتح سلة المشتريات"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h2l1.7 9.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7M10 20h.01M18 20h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>السلة</span></a></div>
         </header>
         @if($categories->isNotEmpty())
-            <nav class="product-category-nav" aria-label="تصنيفات المنتجات"><a class="active" href="{{ route('products.index') }}">كل المنتجات</a>@foreach($categories as $category)<a href="{{ route('products.category', $category->slug) }}">{{ $category->name }} <small>{{ $category->products_count }}</small></a>@endforeach</nav>
+            <nav class="product-category-nav" aria-label="تصنيفات المنتجات"><a class="active" href="{{ route('products.index') }}">كل المنتجات</a>@foreach($categories as $category)<a href="{{ route('products.category', $category->slug) }}">{{ $category->name }}</a>@endforeach</nav>
         @endif
         @if(session('success'))<div class="store-notice" role="status">{{ session('success') }} <a href="{{ route('cart.show') }}">عرض السلة</a></div>@endif
         @error('cart')<div class="notice-error">{{ $message }}</div>@enderror

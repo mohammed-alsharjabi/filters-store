@@ -83,7 +83,7 @@ class MediaCatalogSeeder extends Seeder
                     'brand' => $item['brand'],
                     'excerpt' => $item['excerpt'],
                     'description' => $item['description'],
-                    'price' => null,
+                    'price' => $item['price'],
                     'compare_at_price' => null,
                     'currency' => 'SAR',
                     'stock_quantity' => 0,
@@ -98,6 +98,15 @@ class MediaCatalogSeeder extends Seeder
                     'sort_order' => $index + 1,
                     'published_at' => now(),
                 ]);
+            }
+            if ($product->price === null) {
+                $product->price = $item['price'];
+            }
+            if (str_contains((string) $product->excerpt, 'السعر والتوفر والمواصفات النهائية عند الطلب')) {
+                $product->excerpt = $item['excerpt'];
+            }
+            if (str_contains((string) $product->description, 'بيانات السعر والمخزون والمواصفات التفصيلية متروكة للإدارة حتى اعتمادها')) {
+                $product->description = $item['description'];
             }
             $product->catalog_source_key = $item['key'];
             $product->save();
@@ -193,9 +202,30 @@ class MediaCatalogSeeder extends Seeder
         $home = 'أجهزة التحلية المنزلية';
         $jumbo = 'فلاتر جامبو ومركزية';
         $parts = 'فلاتر الشاور والملحقات';
-        $description = fn (string $name): string => $name.' كما يظهر في الصورة الأصلية. بيانات السعر والمخزون والمواصفات التفصيلية متروكة للإدارة حتى اعتمادها، ويمكن تعديلها بالكامل من لوحة التحكم.';
+        $description = fn (string $name): string => $name.' كما يظهر في الصورة الأصلية. السعر المعروض قابل للتعديل من لوحة التحكم، وتُؤكد المواصفات والتوفر قبل تنفيذ الطلب.';
+        $prices = [
+            'mpure-white' => 750,
+            'aqua-plus' => 650,
+            'aqua-plus-gauge' => 695,
+            'shower' => 70,
+            'shower-angle' => 70,
+            'mpure-blue' => 750,
+            'pressure-tank' => 150,
+            'aqua-commercial' => 2200,
+            'mpure-installed' => 999,
+            'aqua-kit' => 650,
+            'enpure-jumbo' => 750,
+            'angel-complete' => 695,
+            'helsy' => 650,
+            'aquapure-black' => 750,
+            'aqua-taiwan-kit' => 699,
+            'pureena' => 699,
+            'super-pro-8' => 799,
+            'ivlife' => 850,
+            'bwater' => 650,
+        ];
 
-        return [
+        return collect([
             $this->item('mpure-white', 'assets/mist-and-fog-system-installation-riyadh.webp', 'services/mist-and-fog-system-installation-riyadh.webp', 'فلتر جامبو M-PURE ثلاث مراحل بقاعدة بيضاء', 'فلتر جامبو M-PURE ثلاث مراحل مع عدادي ضغط بقاعدة بيضاء', 'mpure-jumbo-white', 'M-PURE', $jumbo, ['جامبو 3 مراحل', 'مع عداد ضغط'], $description),
             $this->item('aqua-plus', 'assets/seven-stage-home-water-purifier.webp', 'services/seven-stage-home-water-purifier.webp', 'جهاز تحلية Aqua Plus سبع مراحل', 'جهاز تحلية مياه منزلي Aqua Plus سبع مراحل بتقنية التناضح العكسي', 'aqua-plus-7-stage', 'Aqua Plus', $home, ['تناضح عكسي', '7 مراحل', 'صنع في فيتنام'], $description),
             $this->item('aqua-plus-gauge', 'assets/seven-stage-home-water-purifier2.webp', 'services/seven-stage-home-water-purifier2.webp', 'جهاز تحلية Aqua Plus سبع مراحل مع عداد ضغط', 'جهاز تحلية Aqua Plus سبع مراحل مزود بعداد ضغط', 'aqua-plus-gauge', 'Aqua Plus', $home, ['تناضح عكسي', '7 مراحل', 'مع عداد ضغط'], $description),
@@ -215,7 +245,7 @@ class MediaCatalogSeeder extends Seeder
             $this->item('super-pro-8', 'assets/newimages/7.webp', 'services/catalog/super-pro-eight-stage.webp', 'جهاز تحلية Super Pro ثماني مراحل تايواني', 'جهاز تحلية Super Pro ثماني مراحل بتقنية التناضح العكسي صنع في تايوان', 'super-pro-8-stage', 'Super Pro', $home, ['تناضح عكسي', '8 مراحل', 'صنع في تايوان'], $description),
             $this->item('ivlife', 'assets/newimages/8.webp', 'services/catalog/ivlife-auto-flush-system.webp', 'جهاز تحلية IVlife بنظام غسيل تلقائي', 'جهاز تحلية IVlife مزود بنظام غسيل تلقائي وعدادَي ضغط وصنبور', 'ivlife-auto-flush', 'IVlife', $home, ['تناضح عكسي', 'مع عداد ضغط'], $description),
             $this->item('bwater', 'assets/newimages/9.webp', 'services/catalog/bwater-seven-stage.webp', 'جهاز تحلية Bwater سبع مراحل', 'جهاز تحلية Bwater سبع مراحل بمراحل معدنية وقلوية', 'bwater-7-stage', 'Bwater', $home, ['تناضح عكسي', '7 مراحل', 'صنع في فيتنام'], $description),
-        ];
+        ])->map(fn (array $item): array => $item + ['price' => $prices[$item['key']]])->all();
     }
 
     private function item(string $key, string $source, string $path, string $name, string $alt, string $slug, ?string $brand, string $category, array $tags, callable $description): array
@@ -225,7 +255,7 @@ class MediaCatalogSeeder extends Seeder
             'caption' => $alt.' — صورة المنتج الأصلية المتاحة لدى المتجر.',
             'usage_notes' => 'مناسب لصفحات المنتجات والخدمات والمقالات المرتبطة بنوع الجهاز الظاهر في الصورة.',
             'slug' => $slug, 'brand' => $brand, 'category' => $category, 'tags' => $tags,
-            'excerpt' => $alt.'. السعر والتوفر والمواصفات النهائية عند الطلب.',
+            'excerpt' => $alt.'. السعر المعروض قابل للتحديث، ويُؤكد المتجر التوفر والمواصفات قبل تنفيذ الطلب.',
             'description' => $description($name),
         ];
     }
